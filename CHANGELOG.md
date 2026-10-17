@@ -3,3 +3,4 @@
 ## Unreleased
 
 - Project skeleton: `Case` and `Verdict` models, CI, packaging.
+- Deterministic judges: exact match, contains-all, regex, token F1 (#1).
