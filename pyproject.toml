@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "evalforge"
+version = "0.1.0"
+description = "Measure LLM outputs with deterministic and LLM-as-judge evaluators, and measure the judges themselves."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Eyüp Fidan" }]
+keywords = ["llm", "evaluation", "llm-as-judge", "benchmark", "rag"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "pydantic>=2.7",
+    "typer>=0.12",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.13,<1",
+]
+
+[project.scripts]
+evalforge = "evalforge.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/eyupcodes/EvalForge"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/evalforge"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["evalforge"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
