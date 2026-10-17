@@ -24,8 +24,12 @@ Reference-based judges run without model calls and return structured verdicts:
 from evalforge import Case
 from evalforge.judges import ContainsAllJudge, TokenF1Judge
 
-case = Case(id="q1", input="Who wrote Les Misérables?",
-            output="It was written by Victor Hugo.", reference="Victor Hugo")
+case = Case(
+    id="q1",
+    input="Who wrote Les Misérables?",
+    output="It was written by Victor Hugo.",
+    reference="Victor Hugo",
+)
 
 TokenF1Judge(threshold=0.5).judge(case)
 # Verdict(case_id='q1', judge='token_f1', score=0.5, passed=True, ...)
