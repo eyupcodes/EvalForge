@@ -14,7 +14,7 @@ Early development. Planned for the first milestone:
 - Deterministic judges: exact match, contains-all, regex, token F1
 - LLM-as-judge with a strict JSON verdict contract and any OpenAI-compatible endpoint
 - Judge reliability: agreement with human labels (Cohen's kappa, accuracy)
-- `evalforge` CLI over JSONL datasets
+- `evalforge` CLI over JSONL datasets (`run`, `agreement`)
 
 ## Deterministic judges
 
@@ -80,6 +80,23 @@ report.accuracy, report.kappa, report.confusion
 `kappa` is Cohen's kappa; it is `None` when chance agreement is total (for example
 every label and verdict is "pass"), where kappa is undefined. Verdicts and labels must
 cover exactly the same case ids, otherwise `ValueError` is raised.
+
+## Command line
+
+Run a deterministic judge over a JSONL dataset (one `Case` per line) and compare the
+verdicts with human labels:
+
+```bash
+evalforge run cases.jsonl --judge token_f1 --threshold 0.6 -o verdicts.jsonl
+evalforge agreement verdicts.jsonl labels.jsonl
+```
+
+`cases.jsonl` rows look like `{"id": "q1", "input": "...", "output": "...",
+"reference": "..."}`; `labels.jsonl` rows look like
+`{"case_id": "q1", "human_pass": true}`. `--judge` is one of `exact_match`,
+`contains_all` (repeat `--phrase`), `regex` (`--pattern`) or `token_f1`. Without
+`-o`, verdicts go to stdout. Malformed input exits with status 1 and a message naming
+the file and line.
 
 ## Development
 
