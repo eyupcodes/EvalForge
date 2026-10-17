@@ -66,6 +66,21 @@ output is never counted as a low score. Any object with a
 `complete(system, user) -> str` method can replace the HTTP client, which keeps tests
 and local models simple.
 
+## Judge reliability
+
+Compare a judge's pass/fail verdicts with human labels before relying on it:
+
+```python
+from evalforge import agreement
+
+report = agreement(verdicts, {"q1": True, "q2": False})
+report.accuracy, report.kappa, report.confusion
+```
+
+`kappa` is Cohen's kappa; it is `None` when chance agreement is total (for example
+every label and verdict is "pass"), where kappa is undefined. Verdicts and labels must
+cover exactly the same case ids, otherwise `ValueError` is raised.
+
 ## Development
 
 Requires Python 3.11+.
