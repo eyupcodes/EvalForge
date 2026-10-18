@@ -98,6 +98,11 @@ evalforge agreement verdicts.jsonl labels.jsonl
 `-o`, verdicts go to stdout. Malformed input exits with status 1 and a message naming
 the file and line.
 
+`evalforge agreement` also takes `--json` (print the report as one JSON object, with
+`"kappa": null` when undefined) and `--min-kappa 0.6`, which prints the report and then
+exits with status 1 if kappa is below the threshold or undefined. Use it as a CI gate
+before trusting a judge.
+
 ## Development
 
 Requires Python 3.11+.

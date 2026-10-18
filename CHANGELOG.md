@@ -7,3 +7,4 @@
 - LLM-as-judge with strict JSON verdicts and OpenAI-compatible client (#2).
 - Judge reliability: accuracy, Cohen's kappa and confusion matrix against human labels (#7).
 - `evalforge run` and `evalforge agreement` CLI commands over JSONL datasets (#9).
+- `evalforge agreement --json` and `--min-kappa` to script and gate on judge reliability (#11).
