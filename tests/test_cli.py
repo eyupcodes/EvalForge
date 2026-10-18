@@ -156,3 +156,24 @@ def test_agreement_reports_missing_file(tmp_path):
     )
     assert result.exit_code == 1
     assert "cannot read" in result.output
+
+
+def test_agreement_json_output(cases_file, tmp_path):
+    verdicts = make_verdicts(cases_file, tmp_path)
+    labels = write_labels(tmp_path, {"q1": True, "q2": False})
+    result = runner.invoke(app, ["agreement", str(verdicts), str(labels), "--json"])
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.output)
+    assert report["n"] == 2
+    assert report["accuracy"] == 1.0
+    assert report["kappa"] == 1.0
+    assert report["confusion"] == {"tp": 1, "fp": 0, "fn": 0, "tn": 1}
+
+
+def test_agreement_json_reports_null_kappa(tmp_path):
+    verdicts = tmp_path / "v.jsonl"
+    verdicts.write_text('{"case_id": "a", "judge": "j", "score": 1, "passed": true}\n')
+    labels = write_labels(tmp_path, {"a": True})
+    result = runner.invoke(app, ["agreement", str(verdicts), str(labels), "--json"])
+    assert result.exit_code == 0
+    assert json.loads(result.output)["kappa"] is None

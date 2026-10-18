@@ -100,12 +100,18 @@ def run(
 def agreement_command(
     verdicts: Annotated[Path, typer.Argument(help="Verdict JSONL from `run`.")],
     labels: Annotated[Path, typer.Argument(help="JSONL of case_id/human_pass.")],
+    as_json: Annotated[
+        bool, typer.Option("--json", help="Print the report as one JSON object.")
+    ] = False,
 ) -> None:
     """Compare judge verdicts with human pass/fail labels."""
     try:
         report = agreement(read_verdicts(verdicts), read_labels(labels))
     except (JsonlError, ValueError) as exc:
         fail(str(exc))
+    if as_json:
+        typer.echo(report.model_dump_json())
+        return
     kappa = "undefined" if report.kappa is None else f"{report.kappa:.3f}"
     matrix = report.confusion
     typer.echo(f"cases:    {report.n}")
