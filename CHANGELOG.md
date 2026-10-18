@@ -8,3 +8,4 @@
 - Judge reliability: accuracy, Cohen's kappa and confusion matrix against human labels (#7).
 - `evalforge run` and `evalforge agreement` CLI commands over JSONL datasets (#9).
 - `evalforge agreement --json` and `--min-kappa` to script and gate on judge reliability (#11).
+- `evalforge run --judge llm` with `--rubric`, `--model`, `--base-url` and `--api-key-env` runs the LLM judge from the command line (#13).

@@ -98,6 +98,20 @@ evalforge agreement verdicts.jsonl labels.jsonl
 `-o`, verdicts go to stdout. Malformed input exits with status 1 and a message naming
 the file and line.
 
+`--judge llm` runs the LLM-as-judge over the same dataset. It needs `--rubric` and
+`--model`, and talks to any OpenAI-compatible endpoint (`--base-url`, default
+`https://api.openai.com/v1`) using the key in the environment variable named by
+`--api-key-env` (default `OPENAI_API_KEY`); `--threshold` sets the pass score
+(default 0.5):
+
+```bash
+evalforge run cases.jsonl --judge llm --model gpt-4o-mini \
+  --rubric "Is the answer factually correct?" -o verdicts.jsonl
+```
+
+A missing key, an HTTP error or a reply that is not a valid verdict stops the run with
+status 1 and a message naming the case.
+
 `evalforge agreement` also takes `--json` (print the report as one JSON object, with
 `"kappa": null` when undefined) and `--min-kappa 0.6`, which prints the report and then
 exits with status 1 if kappa is below the threshold or undefined. Use it as a CI gate
