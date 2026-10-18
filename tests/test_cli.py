@@ -1,5 +1,6 @@
 import json
 
+import httpx
 import pytest
 from typer.testing import CliRunner
 
@@ -209,3 +210,119 @@ def test_min_kappa_fails_when_undefined(tmp_path):
     )
     assert result.exit_code == 1
     assert "undefined" in result.output
+
+
+class FakeJudgeClient:
+    def __init__(self, *replies: str) -> None:
+        self.replies = list(replies)
+
+    def complete(self, system: str, user: str) -> str:
+        return self.replies.pop(0)
+
+
+@pytest.fixture
+def fake_llm(monkeypatch):
+    def install(*replies: str) -> list[tuple[str, str, str]]:
+        built: list[tuple[str, str, str]] = []
+
+        def factory(model: str, base_url: str, api_key_env: str):
+            built.append((model, base_url, api_key_env))
+            return FakeJudgeClient(*replies)
+
+        monkeypatch.setattr("evalforge.cli.build_llm_client", factory)
+        return built
+
+    return install
+
+
+def test_run_llm_judge_writes_verdicts_agreement_can_read(
+    cases_file, tmp_path, fake_llm
+):
+    built = fake_llm('{"score": 1, "reason": "ok"}', '{"score": 0.1, "reason": "no"}')
+    out = tmp_path / "verdicts.jsonl"
+    labels = tmp_path / "labels.jsonl"
+    labels.write_text(
+        '{"case_id": "q1", "human_pass": true}\n'
+        '{"case_id": "q2", "human_pass": false}\n',
+        encoding="utf-8",
+    )
+    result = runner.invoke(
+        app,
+        [
+            *["run", str(cases_file), "--judge", "llm", "-o", str(out)],
+            *["--rubric", "Is it right?", "--model", "judge-1"],
+            *["--base-url", "http://localhost:8000/v1", "--api-key-env", "MY_KEY"],
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert built == [("judge-1", "http://localhost:8000/v1", "MY_KEY")]
+    assert "1/2 passed (llm_judge)" in result.output
+
+    report = runner.invoke(app, ["agreement", str(out), str(labels), "--json"])
+    assert report.exit_code == 0, report.output
+    assert json.loads(report.stdout)["accuracy"] == 1.0
+
+
+def test_run_llm_judge_threshold(cases_file, fake_llm):
+    fake_llm('{"score": 0.6}', '{"score": 0.6}')
+    result = runner.invoke(
+        app,
+        [
+            *["run", str(cases_file), "--judge", "llm", "--rubric", "r"],
+            *["--model", "m", "--threshold", "0.7"],
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "0/2 passed" in result.output
+
+
+@pytest.mark.parametrize(
+    ("extra", "message"),
+    [
+        (["--model", "m"], "--rubric"),
+        (["--rubric", "r"], "--model"),
+    ],
+)
+def test_run_llm_judge_requires_rubric_and_model(cases_file, extra, message):
+    result = runner.invoke(app, ["run", str(cases_file), "--judge", "llm", *extra])
+    assert result.exit_code == 1
+    assert message in result.output
+
+
+def test_run_llm_judge_reports_unparseable_reply(cases_file, fake_llm):
+    fake_llm("not json", "still not json")
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "llm", "--rubric", "r", "--model", "m"],
+    )
+    assert result.exit_code == 1
+    assert "error:" in result.output
+    assert "q1" in result.output
+
+
+def test_run_llm_judge_reports_missing_api_key(cases_file, monkeypatch):
+    monkeypatch.delenv("EVALFORGE_TEST_KEY", raising=False)
+    result = runner.invoke(
+        app,
+        [
+            *["run", str(cases_file), "--judge", "llm", "--rubric", "r"],
+            *["--model", "m", "--api-key-env", "EVALFORGE_TEST_KEY"],
+        ],
+    )
+    assert result.exit_code == 1
+    assert "EVALFORGE_TEST_KEY" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_run_llm_judge_reports_http_failure(cases_file, monkeypatch):
+    class Failing:
+        def complete(self, system: str, user: str) -> str:
+            raise httpx.ConnectError("connection refused")
+
+    monkeypatch.setattr("evalforge.cli.build_llm_client", lambda *args: Failing())
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "llm", "--rubric", "r", "--model", "m"],
+    )
+    assert result.exit_code == 1
+    assert "connection refused" in result.output

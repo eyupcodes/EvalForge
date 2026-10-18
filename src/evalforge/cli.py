@@ -8,6 +8,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, NoReturn
 
+import httpx
 import typer
 
 from evalforge.agreement import AgreementReport, agreement
@@ -25,6 +26,10 @@ from evalforge.judges import (
     RegexJudge,
     TokenF1Judge,
 )
+from evalforge.judges.llm import JudgeClient, LLMJudge, OpenAICompatibleClient
+
+DEFAULT_BASE_URL = "https://api.openai.com/v1"
+DEFAULT_API_KEY_ENV = "OPENAI_API_KEY"
 
 app = typer.Typer(
     help="Run EvalForge judges over JSONL datasets.",
@@ -38,6 +43,7 @@ class JudgeName(StrEnum):
     contains_all = "contains_all"
     regex = "regex"
     token_f1 = "token_f1"
+    llm = "llm"
 
 
 def fail(message: str) -> NoReturn:
@@ -45,11 +51,31 @@ def fail(message: str) -> NoReturn:
     raise typer.Exit(code=1)
 
 
+def build_llm_client(model: str, base_url: str, api_key_env: str) -> JudgeClient:
+    return OpenAICompatibleClient(
+        model=model, base_url=base_url, api_key_env=api_key_env
+    )
+
+
 def build_judge(
-    name: JudgeName, threshold: float | None, phrases: list[str], pattern: str | None
+    name: JudgeName,
+    threshold: float | None,
+    phrases: list[str],
+    pattern: str | None,
+    rubric: str | None = None,
+    model: str | None = None,
+    base_url: str = DEFAULT_BASE_URL,
+    api_key_env: str = DEFAULT_API_KEY_ENV,
 ) -> Judge:
     if name is JudgeName.exact_match:
         return ExactMatchJudge()
+    if name is JudgeName.llm:
+        if not rubric:
+            fail("--judge llm needs --rubric")
+        if not model:
+            fail("--judge llm needs --model")
+        client = build_llm_client(model, base_url, api_key_env)
+        return LLMJudge(client, rubric, 0.5 if threshold is None else threshold)
     if name is JudgeName.token_f1:
         return TokenF1Judge() if threshold is None else TokenF1Judge(threshold)
     if name is JudgeName.contains_all:
@@ -73,15 +99,29 @@ def run(
     ] = None,
     threshold: Annotated[
         float | None,
-        typer.Option(min=0.0, max=1.0, help="Pass threshold (token_f1, contains_all)."),
+        typer.Option(
+            min=0.0, max=1.0, help="Pass threshold (token_f1, contains_all, llm)."
+        ),
     ] = None,
     phrase: Annotated[
         list[str] | None, typer.Option(help="Required phrase (contains_all).")
     ] = None,
     pattern: Annotated[str | None, typer.Option(help="Regex (regex judge).")] = None,
+    rubric: Annotated[
+        str | None, typer.Option(help="Grading rubric (llm judge).")
+    ] = None,
+    model: Annotated[str | None, typer.Option(help="Judge model (llm judge).")] = None,
+    base_url: Annotated[
+        str, typer.Option(help="OpenAI-compatible endpoint (llm judge).")
+    ] = DEFAULT_BASE_URL,
+    api_key_env: Annotated[
+        str, typer.Option(help="Environment variable holding the API key (llm judge).")
+    ] = DEFAULT_API_KEY_ENV,
 ) -> None:
     """Judge every case and write one verdict per line (stdout by default)."""
-    selected = build_judge(judge, threshold, phrase or [], pattern)
+    selected = build_judge(
+        judge, threshold, phrase or [], pattern, rubric, model, base_url, api_key_env
+    )
     try:
         loaded = read_cases(cases)
         verdicts = [selected.judge(case) for case in loaded]
@@ -90,7 +130,7 @@ def run(
                 sys.stdout.write(verdict.model_dump_json() + "\n")
         else:
             write_verdicts(verdicts, output)
-    except (JsonlError, ValueError, OSError) as exc:
+    except (JsonlError, ValueError, OSError, RuntimeError, httpx.HTTPError) as exc:
         fail(str(exc))
     passed = sum(v.passed for v in verdicts)
     typer.echo(f"{passed}/{len(verdicts)} passed ({selected.name})", err=True)
