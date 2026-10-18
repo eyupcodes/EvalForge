@@ -10,7 +10,7 @@ from typing import Annotated, NoReturn
 
 import typer
 
-from evalforge.agreement import agreement
+from evalforge.agreement import AgreementReport, agreement
 from evalforge.io import (
     JsonlError,
     read_cases,
@@ -103,6 +103,14 @@ def agreement_command(
     as_json: Annotated[
         bool, typer.Option("--json", help="Print the report as one JSON object.")
     ] = False,
+    min_kappa: Annotated[
+        float | None,
+        typer.Option(
+            min=-1.0,
+            max=1.0,
+            help="Exit 1 if kappa is below this value or undefined.",
+        ),
+    ] = None,
 ) -> None:
     """Compare judge verdicts with human pass/fail labels."""
     try:
@@ -111,7 +119,16 @@ def agreement_command(
         fail(str(exc))
     if as_json:
         typer.echo(report.model_dump_json())
-        return
+    else:
+        print_report(report)
+    if min_kappa is not None:
+        if report.kappa is None:
+            fail(f"kappa is undefined, cannot demonstrate --min-kappa {min_kappa}")
+        if report.kappa < min_kappa:
+            fail(f"kappa {report.kappa:.3f} is below --min-kappa {min_kappa}")
+
+
+def print_report(report: AgreementReport) -> None:
     kappa = "undefined" if report.kappa is None else f"{report.kappa:.3f}"
     matrix = report.confusion
     typer.echo(f"cases:    {report.n}")

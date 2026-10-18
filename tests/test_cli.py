@@ -177,3 +177,35 @@ def test_agreement_json_reports_null_kappa(tmp_path):
     result = runner.invoke(app, ["agreement", str(verdicts), str(labels), "--json"])
     assert result.exit_code == 0
     assert json.loads(result.output)["kappa"] is None
+
+
+def test_min_kappa_passes_when_met(cases_file, tmp_path):
+    verdicts = make_verdicts(cases_file, tmp_path)
+    labels = write_labels(tmp_path, {"q1": True, "q2": False})
+    result = runner.invoke(
+        app, ["agreement", str(verdicts), str(labels), "--min-kappa", "0.6"]
+    )
+    assert result.exit_code == 0, result.output
+    assert "kappa:    1.000" in result.output
+
+
+def test_min_kappa_fails_when_below_threshold(cases_file, tmp_path):
+    verdicts = make_verdicts(cases_file, tmp_path)
+    labels = write_labels(tmp_path, {"q1": False, "q2": True})
+    result = runner.invoke(
+        app, ["agreement", str(verdicts), str(labels), "--min-kappa", "0.6"]
+    )
+    assert result.exit_code == 1
+    assert "kappa:    -1.000" in result.output
+    assert "below --min-kappa 0.6" in result.output
+
+
+def test_min_kappa_fails_when_undefined(tmp_path):
+    verdicts = tmp_path / "v.jsonl"
+    verdicts.write_text('{"case_id": "a", "judge": "j", "score": 1, "passed": true}\n')
+    labels = write_labels(tmp_path, {"a": True})
+    result = runner.invoke(
+        app, ["agreement", str(verdicts), str(labels), "--json", "--min-kappa", "0.1"]
+    )
+    assert result.exit_code == 1
+    assert "undefined" in result.output
