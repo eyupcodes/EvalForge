@@ -59,7 +59,20 @@ class OpenAICompatibleClient:
                 },
             )
             response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"]
+            return self._content(response)
+
+    def _content(self, response: httpx.Response) -> str:
+        try:
+            content = response.json()["choices"][0]["message"]["content"]
+        except (ValueError, LookupError, TypeError) as exc:
+            raise RuntimeError(
+                f"unexpected response from {self.base_url}: no completion in reply"
+            ) from exc
+        if not isinstance(content, str):
+            raise RuntimeError(
+                f"unexpected response from {self.base_url}: empty completion"
+            )
+        return content
 
 
 def build_prompt(case: Case, rubric: str) -> str:
