@@ -5,6 +5,7 @@ import pytest
 from typer.testing import CliRunner
 
 from evalforge.cli import app
+from evalforge.judges.llm import OpenAICompatibleClient
 
 runner = CliRunner()
 
@@ -326,3 +327,26 @@ def test_run_llm_judge_reports_http_failure(cases_file, monkeypatch):
     )
     assert result.exit_code == 1
     assert "connection refused" in result.output
+
+
+def test_run_llm_judge_reports_malformed_provider_response(cases_file, monkeypatch):
+    def factory(model: str, base_url: str, api_key_env: str):
+        return OpenAICompatibleClient(
+            model=model,
+            base_url=base_url,
+            api_key_env=api_key_env,
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, json={})),
+        )
+
+    monkeypatch.setenv("EVALFORGE_TEST_KEY", "secret")
+    monkeypatch.setattr("evalforge.cli.build_llm_client", factory)
+    result = runner.invoke(
+        app,
+        [
+            *["run", str(cases_file), "--judge", "llm", "--rubric", "r"],
+            *["--model", "m", "--api-key-env", "EVALFORGE_TEST_KEY"],
+        ],
+    )
+    assert result.exit_code == 1
+    assert "unexpected response" in result.output
+    assert "Traceback" not in result.output
