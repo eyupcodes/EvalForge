@@ -125,3 +125,26 @@ def test_openai_client_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None
 
     with pytest.raises(RuntimeError, match="MISSING_KEY"):
         client.complete("s", "u")
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(200, text="<html>gateway</html>"),
+        httpx.Response(200, json={"error": {"message": "quota"}}),
+        httpx.Response(200, json={"choices": []}),
+        httpx.Response(200, json={"choices": [{"message": {"content": None}}]}),
+    ],
+)
+def test_openai_client_rejects_unexpected_response_shapes(
+    monkeypatch: pytest.MonkeyPatch, response: httpx.Response
+) -> None:
+    monkeypatch.setenv("TEST_KEY", "secret")
+    client = OpenAICompatibleClient(
+        model="m",
+        api_key_env="TEST_KEY",
+        transport=httpx.MockTransport(lambda request: response),
+    )
+
+    with pytest.raises(RuntimeError, match="unexpected response"):
+        client.complete("s", "u")
