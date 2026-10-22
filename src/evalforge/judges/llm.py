@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -17,6 +19,8 @@ SYSTEM_PROMPT = (
     "Reply with only a JSON object: "
     '{"score": <number between 0 and 1>, "reason": "<one sentence>"}.'
 )
+
+RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 
 _FENCED = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
 
@@ -40,26 +44,52 @@ class OpenAICompatibleClient:
     api_key_env: str = "OPENAI_API_KEY"
     timeout: float = 60.0
     transport: httpx.BaseTransport | None = None
+    max_retries: int = 3
+    backoff: float = 1.0
+    sleep: Callable[[float], None] = time.sleep
 
     def complete(self, system: str, user: str) -> str:
         api_key = os.environ.get(self.api_key_env)
         if not api_key:
             raise RuntimeError(f"set {self.api_key_env} to call {self.base_url}")
         with httpx.Client(timeout=self.timeout, transport=self.transport) as http:
-            response = http.post(
-                f"{self.base_url.rstrip('/')}/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": self.model,
-                    "temperature": 0,
-                    "messages": [
-                        {"role": "system", "content": system},
-                        {"role": "user", "content": user},
-                    ],
-                },
-            )
-            response.raise_for_status()
-            return self._content(response)
+            for attempt in range(self.max_retries + 1):
+                try:
+                    response = http.post(
+                        f"{self.base_url.rstrip('/')}/chat/completions",
+                        headers={"Authorization": f"Bearer {api_key}"},
+                        json={
+                            "model": self.model,
+                            "temperature": 0,
+                            "messages": [
+                                {"role": "system", "content": system},
+                                {"role": "user", "content": user},
+                            ],
+                        },
+                    )
+                except httpx.TransportError:
+                    if attempt == self.max_retries:
+                        raise
+                    self.sleep(self._delay(attempt, None))
+                    continue
+                if (
+                    response.status_code in RETRY_STATUSES
+                    and attempt < self.max_retries
+                ):
+                    self.sleep(self._delay(attempt, response))
+                    continue
+                response.raise_for_status()
+                return self._content(response)
+        raise AssertionError("unreachable")  # pragma: no cover
+
+    def _delay(self, attempt: int, response: httpx.Response | None) -> float:
+        """Seconds to wait before retrying: ``Retry-After`` if numeric, else backoff."""
+        if response is not None:
+            try:
+                return max(0.0, float(response.headers["Retry-After"]))
+            except (KeyError, ValueError):
+                pass
+        return self.backoff * 2**attempt
 
     def _content(self, response: httpx.Response) -> str:
         try:
