@@ -148,3 +148,90 @@ def test_openai_client_rejects_unexpected_response_shapes(
 
     with pytest.raises(RuntimeError, match="unexpected response"):
         client.complete("s", "u")
+
+
+def _retry_client(
+    monkeypatch: pytest.MonkeyPatch,
+    replies: list[httpx.Response | Exception],
+    sleeps: list[float],
+) -> tuple[OpenAICompatibleClient, list[httpx.Request]]:
+    monkeypatch.setenv("TEST_KEY", "secret")
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        reply = replies[len(requests) - 1]
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+    client = OpenAICompatibleClient(
+        model="m",
+        api_key_env="TEST_KEY",
+        transport=httpx.MockTransport(handler),
+        sleep=sleeps.append,
+    )
+    return client, requests
+
+
+OK = httpx.Response(200, json={"choices": [{"message": {"content": "done"}}]})
+
+
+def test_openai_client_retries_transient_statuses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sleeps: list[float] = []
+    client, requests = _retry_client(
+        monkeypatch, [httpx.Response(503), httpx.Response(500), OK], sleeps
+    )
+
+    assert client.complete("s", "u") == "done"
+    assert len(requests) == 3
+    assert sleeps == [1.0, 2.0]
+
+
+def test_openai_client_honours_retry_after(monkeypatch: pytest.MonkeyPatch) -> None:
+    sleeps: list[float] = []
+    limited = httpx.Response(429, headers={"Retry-After": "7"})
+    client, _ = _retry_client(monkeypatch, [limited, OK], sleeps)
+
+    assert client.complete("s", "u") == "done"
+    assert sleeps == [7.0]
+
+
+def test_openai_client_retries_transport_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sleeps: list[float] = []
+    client, requests = _retry_client(
+        monkeypatch, [httpx.ConnectTimeout("slow"), OK], sleeps
+    )
+
+    assert client.complete("s", "u") == "done"
+    assert len(requests) == 2
+
+
+def test_openai_client_does_not_retry_client_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sleeps: list[float] = []
+    client, requests = _retry_client(monkeypatch, [httpx.Response(401), OK], sleeps)
+
+    with pytest.raises(httpx.HTTPStatusError):
+        client.complete("s", "u")
+    assert len(requests) == 1
+    assert sleeps == []
+
+
+def test_openai_client_gives_up_after_max_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sleeps: list[float] = []
+    client, requests = _retry_client(
+        monkeypatch, [httpx.Response(502)] * 4 + [OK], sleeps
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        client.complete("s", "u")
+    assert len(requests) == 4
+    assert len(sleeps) == 3
