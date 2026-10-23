@@ -49,6 +49,37 @@ def test_run_threshold_changes_outcome(cases_file):
     assert "2/2 passed" in result.output
 
 
+def test_min_pass_rate_passes_when_met_and_still_writes_verdicts(cases_file, tmp_path):
+    out = tmp_path / "verdicts.jsonl"
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "exact_match", "-o", str(out)]
+        + ["--min-pass-rate", "0.5"],
+    )
+    assert result.exit_code == 0, result.output
+    assert len(out.read_text().splitlines()) == 2
+
+
+def test_min_pass_rate_fails_when_below_threshold(cases_file, tmp_path):
+    out = tmp_path / "verdicts.jsonl"
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "exact_match", "-o", str(out)]
+        + ["--min-pass-rate", "0.9"],
+    )
+    assert result.exit_code == 1
+    assert "1/2 passed" in result.output
+    assert "pass rate 0.500 is below --min-pass-rate 0.9" in result.output
+    assert len(out.read_text().splitlines()) == 2
+
+
+def test_min_pass_rate_rejects_out_of_range_value(cases_file):
+    result = runner.invoke(
+        app, ["run", str(cases_file), "--judge", "exact_match", "--min-pass-rate", "2"]
+    )
+    assert result.exit_code == 2
+
+
 def test_run_contains_all_with_phrases(cases_file):
     result = runner.invoke(
         app,

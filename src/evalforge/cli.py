@@ -117,6 +117,14 @@ def run(
     api_key_env: Annotated[
         str, typer.Option(help="Environment variable holding the API key (llm judge).")
     ] = DEFAULT_API_KEY_ENV,
+    min_pass_rate: Annotated[
+        float | None,
+        typer.Option(
+            min=0.0,
+            max=1.0,
+            help="Exit 1 if the share of passed cases is below this value.",
+        ),
+    ] = None,
 ) -> None:
     """Judge every case and write one verdict per line (stdout by default)."""
     selected = build_judge(
@@ -134,6 +142,11 @@ def run(
         fail(str(exc))
     passed = sum(v.passed for v in verdicts)
     typer.echo(f"{passed}/{len(verdicts)} passed ({selected.name})", err=True)
+    if min_pass_rate is not None and passed / len(verdicts) < min_pass_rate:
+        fail(
+            f"pass rate {passed / len(verdicts):.3f} is below "
+            f"--min-pass-rate {min_pass_rate}"
+        )
 
 
 @app.command("agreement")
