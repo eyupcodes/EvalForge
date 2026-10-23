@@ -112,6 +112,9 @@ evalforge run cases.jsonl --judge llm --model gpt-4o-mini \
 A missing key, an HTTP error or a reply that is not a valid verdict stops the run with
 status 1 and a message naming the case.
 
+`evalforge run --min-pass-rate 0.8` writes the verdicts as usual, then exits with
+status 1 if fewer than 80% of the cases passed, so a judge can gate a CI job directly.
+
 `evalforge agreement` also takes `--json` (print the report as one JSON object, with
 `"kappa": null` when undefined) and `--min-kappa 0.6`, which prints the report and then
 exits with status 1 if kappa is below the threshold or undefined. Use it as a CI gate
