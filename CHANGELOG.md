@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve Unicode line separators inside JSONL strings so valid datasets and verdicts can be read back without spurious JSON errors.
+
 - Project skeleton: `Case` and `Verdict` models, CI, packaging.
 - Deterministic judges: exact match, contains-all, regex, token F1 (#1).
 - LLM-as-judge with strict JSON verdicts and OpenAI-compatible client (#2).

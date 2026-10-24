@@ -29,6 +29,44 @@ def test_read_cases_skips_blank_lines(tmp_path):
     assert cases[1].reference == "y"
 
 
+@pytest.mark.parametrize("codepoint", [0x85, 0x2028, 0x2029])
+def test_read_cases_preserves_unicode_line_separators(tmp_path, codepoint):
+    output = f"first{chr(codepoint)}second"
+    path = write(
+        tmp_path / "c.jsonl",
+        json.dumps({"id": "a", "input": "q", "output": output}, ensure_ascii=False),
+        '{"id": "b", "input": "q", "output": "next"}',
+    )
+    cases = read_cases(path)
+    assert [case.id for case in cases] == ["a", "b"]
+    assert cases[0].output == output
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n", "\r"])
+def test_read_cases_accepts_standard_line_endings(tmp_path, newline):
+    path = tmp_path / "c.jsonl"
+    rows = [
+        '{"id": "a", "input": "q", "output": "x"}',
+        "",
+        '{"id": "b", "input": "q", "output": "y"}',
+    ]
+    path.write_bytes(newline.join(rows).encode("utf-8"))
+    assert [case.id for case in read_cases(path)] == ["a", "b"]
+
+
+def test_read_cases_reports_physical_line_after_unicode_separator(tmp_path):
+    path = write(
+        tmp_path / "c.jsonl",
+        json.dumps(
+            {"id": "a", "input": "q", "output": chr(0x2028)}, ensure_ascii=False
+        ),
+        "",
+        "{",
+    )
+    with pytest.raises(JsonlError, match=r"c\.jsonl:3: invalid JSON"):
+        read_cases(path)
+
+
 def test_read_cases_reports_invalid_json_with_line(tmp_path):
     path = write(tmp_path / "c.jsonl", '{"id": "a", "input": "q", "output": "x"}', "{")
     with pytest.raises(JsonlError, match=r"c\.jsonl:2: invalid JSON"):
@@ -57,9 +95,11 @@ def test_read_cases_missing_file(tmp_path):
         read_cases(tmp_path / "nope.jsonl")
 
 
-def test_verdicts_round_trip(tmp_path):
+@pytest.mark.parametrize("codepoint", [None, 0x85, 0x2028, 0x2029])
+def test_verdicts_round_trip(tmp_path, codepoint):
+    reason = "ok" if codepoint is None else f"first{chr(codepoint)}second"
     verdicts = [
-        Verdict(case_id="a", judge="regex", score=1.0, passed=True, reason="ok"),
+        Verdict(case_id="a", judge="regex", score=1.0, passed=True, reason=reason),
         Verdict(case_id="b", judge="regex", score=0.0, passed=False),
     ]
     path = tmp_path / "v.jsonl"

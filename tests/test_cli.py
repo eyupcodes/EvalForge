@@ -128,6 +128,35 @@ def test_run_reports_bad_input_file(tmp_path):
     assert "c.jsonl:1: invalid JSON" in result.output
 
 
+def test_run_and_agreement_preserve_unicode_line_separators(tmp_path):
+    case_id = f"q{chr(0x2028)}1"
+    answer = f"first{chr(0x2029)}second"
+    cases = tmp_path / "cases.jsonl"
+    cases.write_text(
+        json.dumps(
+            {"id": case_id, "input": "?", "output": answer, "reference": answer},
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    verdicts = tmp_path / "verdicts.jsonl"
+    run = runner.invoke(
+        app, ["run", str(cases), "--judge", "exact_match", "-o", str(verdicts)]
+    )
+    assert run.exit_code == 0, run.output
+    assert json.loads(verdicts.read_text(encoding="utf-8"))["case_id"] == case_id
+
+    labels = tmp_path / "labels.jsonl"
+    labels.write_text(
+        json.dumps({"case_id": case_id, "human_pass": True}, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    report = runner.invoke(app, ["agreement", str(verdicts), str(labels), "--json"])
+    assert report.exit_code == 0, report.output
+    assert json.loads(report.stdout)["accuracy"] == 1.0
+
+
 def test_run_reports_unwritable_output(cases_file, tmp_path):
     result = runner.invoke(
         app,

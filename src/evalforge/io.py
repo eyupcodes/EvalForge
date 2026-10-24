@@ -23,7 +23,8 @@ def _rows(path: Path) -> Iterator[tuple[int, object]]:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
         raise JsonlError(f"cannot read {path}: {exc.strerror or exc}") from exc
-    for number, line in enumerate(text.splitlines(), start=1):
+    # JSON strings may contain Unicode separators that str.splitlines() treats as lines.
+    for number, line in enumerate(text.split("\n"), start=1):
         if not line.strip():
             continue
         try:
