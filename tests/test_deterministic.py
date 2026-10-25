@@ -88,3 +88,41 @@ def test_token_f1_is_zero_without_overlap() -> None:
 
     assert verdict.score == 0.0
     assert not verdict.passed
+
+
+@pytest.mark.parametrize(
+    ("output", "reference"),
+    [
+        ("Paris Paris", "Paris"),
+        ("Paris", "Paris Paris"),
+        ("Paris Paris Lyon", "Paris Lyon Lyon"),
+    ],
+)
+def test_token_f1_counts_repeated_tokens(output: str, reference: str) -> None:
+    verdict = TokenF1Judge().judge(make_case(output, reference))
+
+    assert verdict.score == pytest.approx(0.6667, abs=1e-4)
+    assert verdict.passed
+
+
+@pytest.mark.parametrize(
+    ("output", "reference"),
+    [("", "Paris"), ("Paris", ""), ("", ""), (" !? ", " ... ")],
+)
+def test_token_f1_is_zero_for_empty_normalized_answers(
+    output: str, reference: str
+) -> None:
+    verdict = TokenF1Judge().judge(make_case(output, reference))
+
+    assert verdict.score == 0.0
+    assert not verdict.passed
+
+
+@pytest.mark.parametrize(("threshold", "passed"), [(2 / 3, True), (0.66668, False)])
+def test_token_f1_compares_threshold_before_rounding(
+    threshold: float, passed: bool
+) -> None:
+    verdict = TokenF1Judge(threshold=threshold).judge(make_case("Paris Paris"))
+
+    assert verdict.score == 0.6667
+    assert verdict.passed is passed
