@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import string
+import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 
@@ -14,8 +15,10 @@ _PUNCT = str.maketrans("", "", string.punctuation)
 
 
 def normalize(text: str) -> str:
-    """Lowercase, drop punctuation and collapse whitespace."""
-    return " ".join(text.lower().translate(_PUNCT).split())
+    """Lowercase, drop ASCII and Unicode punctuation and collapse whitespace."""
+    stripped = text.lower().translate(_PUNCT)
+    kept = (ch for ch in stripped if not unicodedata.category(ch).startswith("P"))
+    return " ".join("".join(kept).split())
 
 
 @dataclass
