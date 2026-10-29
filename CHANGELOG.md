@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- JSONL files with a UTF-8 BOM now load, and files that are not valid UTF-8 fail with an error naming the file instead of a raw codec message (#25).
 - Protect token F1 scoring with regression tests for repeated tokens, empty normalized answers, and pass thresholds before score rounding.
 
 - Preserve Unicode line separators inside JSONL strings so valid datasets and verdicts can be read back without spurious JSON errors.
