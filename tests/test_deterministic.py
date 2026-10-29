@@ -18,6 +18,28 @@ def test_normalize_strips_case_punctuation_and_spacing() -> None:
     assert normalize("  Hello,   WORLD! ") == "hello world"
 
 
+def test_normalize_strips_unicode_punctuation() -> None:
+    assert normalize("\u201cParis\u201d\u2026") == "paris"
+    assert normalize("state\u2011of\u2013the\u2014art") == "stateoftheart"
+    assert normalize("\u00bfD\u00f6nerci mi\u003f \u00ab\u0130stanbul\u00bb") == (
+        "d\u00f6nerci mi i\u0307stanbul"
+    )
+
+
+def test_exact_match_ignores_unicode_quotes_and_ellipsis() -> None:
+    verdict = ExactMatchJudge().judge(make_case("\u201cParis\u201d\u2026"))
+
+    assert verdict.passed
+
+
+def test_token_f1_treats_unicode_and_ascii_punctuation_alike() -> None:
+    case = make_case(
+        "\u2018the\u2019 capital is \u201cparis\u201d", "The capital is Paris"
+    )
+
+    assert TokenF1Judge().judge(case).score == 1.0
+
+
 def test_exact_match_ignores_case_and_punctuation_by_default() -> None:
     verdict = ExactMatchJudge().judge(make_case("paris."))
 
