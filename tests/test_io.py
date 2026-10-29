@@ -134,3 +134,22 @@ def test_read_labels_rejects_duplicates(tmp_path):
     row = json.dumps({"case_id": "a", "human_pass": True})
     with pytest.raises(JsonlError, match="duplicate label for case 'a'"):
         read_labels(write(tmp_path / "l.jsonl", row, row))
+
+
+def test_read_cases_ignores_utf8_bom(tmp_path):
+    path = tmp_path / "c.jsonl"
+    path.write_bytes(b'\xef\xbb\xbf{"id": "a", "input": "q", "output": "x"}\n')
+    assert [case.id for case in read_cases(path)] == ["a"]
+
+
+def test_read_labels_ignores_utf8_bom(tmp_path):
+    path = tmp_path / "l.jsonl"
+    path.write_bytes(b'\xef\xbb\xbf{"case_id": "a", "human_pass": true}\n')
+    assert read_labels(path) == {"a": True}
+
+
+def test_read_cases_names_file_when_not_utf8(tmp_path):
+    path = tmp_path / "c.jsonl"
+    path.write_bytes(b'{"id": "a", "input": "q", "output": "\xff"}\n')
+    with pytest.raises(JsonlError, match=r"c\.jsonl: not valid UTF-8"):
+        read_cases(path)
