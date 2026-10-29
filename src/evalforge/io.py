@@ -20,9 +20,12 @@ class JsonlError(ValueError):
 
 def _rows(path: Path) -> Iterator[tuple[int, object]]:
     try:
-        text = path.read_text(encoding="utf-8")
+        # utf-8-sig drops the BOM that Excel and Windows editors prepend.
+        text = path.read_text(encoding="utf-8-sig")
     except OSError as exc:
         raise JsonlError(f"cannot read {path}: {exc.strerror or exc}") from exc
+    except UnicodeDecodeError as exc:
+        raise JsonlError(f"{path}: not valid UTF-8 ({exc.reason})") from exc
     # JSON strings may contain Unicode separators that str.splitlines() treats as lines.
     for number, line in enumerate(text.split("\n"), start=1):
         if not line.strip():
