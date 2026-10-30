@@ -47,6 +47,11 @@ def test_build_prompt_omits_missing_reference_and_context() -> None:
     assert "CONTEXT" not in prompt
 
 
+@pytest.mark.parametrize("raw", ['{"score": 0.5}', '{"score": 0.5, "reason": null}'])
+def test_parse_verdict_missing_or_null_reason_is_empty(raw: str) -> None:
+    assert parse_verdict(raw) == (0.5, "")
+
+
 def test_parse_verdict_accepts_fenced_json() -> None:
     raw = 'Sure.\n```json\n{"score": 0.8, "reason": "close"}\n```'
 
@@ -197,6 +202,21 @@ def test_openai_client_honours_retry_after(monkeypatch: pytest.MonkeyPatch) -> N
 
     assert client.complete("s", "u") == "done"
     assert sleeps == [7.0]
+
+
+@pytest.mark.parametrize(
+    ("retry_after", "expected"),
+    [("3600", 60.0), ("inf", 1.0), ("nan", 1.0), ("-5", 0.0), ("soon", 1.0)],
+)
+def test_openai_client_bounds_retry_after(
+    monkeypatch: pytest.MonkeyPatch, retry_after: str, expected: float
+) -> None:
+    sleeps: list[float] = []
+    limited = httpx.Response(429, headers={"Retry-After": retry_after})
+    client, _ = _retry_client(monkeypatch, [limited, OK], sleeps)
+
+    assert client.complete("s", "u") == "done"
+    assert sleeps == [expected]
 
 
 def test_openai_client_retries_transport_errors(
