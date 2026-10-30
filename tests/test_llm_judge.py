@@ -199,6 +199,21 @@ def test_openai_client_honours_retry_after(monkeypatch: pytest.MonkeyPatch) -> N
     assert sleeps == [7.0]
 
 
+@pytest.mark.parametrize(
+    ("retry_after", "expected"),
+    [("3600", 60.0), ("inf", 1.0), ("nan", 1.0), ("-5", 0.0), ("soon", 1.0)],
+)
+def test_openai_client_bounds_retry_after(
+    monkeypatch: pytest.MonkeyPatch, retry_after: str, expected: float
+) -> None:
+    sleeps: list[float] = []
+    limited = httpx.Response(429, headers={"Retry-After": retry_after})
+    client, _ = _retry_client(monkeypatch, [limited, OK], sleeps)
+
+    assert client.complete("s", "u") == "done"
+    assert sleeps == [expected]
+
+
 def test_openai_client_retries_transport_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

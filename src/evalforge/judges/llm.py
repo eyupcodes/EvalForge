@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import time
@@ -46,6 +47,7 @@ class OpenAICompatibleClient:
     transport: httpx.BaseTransport | None = None
     max_retries: int = 3
     backoff: float = 1.0
+    max_retry_delay: float = 60.0
     sleep: Callable[[float], None] = time.sleep
 
     def complete(self, system: str, user: str) -> str:
@@ -83,13 +85,19 @@ class OpenAICompatibleClient:
         raise AssertionError("unreachable")  # pragma: no cover
 
     def _delay(self, attempt: int, response: httpx.Response | None) -> float:
-        """Seconds to wait before retrying: ``Retry-After`` if numeric, else backoff."""
+        """Seconds to wait before retrying, never more than ``max_retry_delay``.
+
+        Uses ``Retry-After`` when it is a finite number, else exponential backoff.
+        """
+        delay = self.backoff * 2**attempt
         if response is not None:
             try:
-                return max(0.0, float(response.headers["Retry-After"]))
+                header = float(response.headers["Retry-After"])
             except (KeyError, ValueError):
-                pass
-        return self.backoff * 2**attempt
+                header = math.nan
+            if math.isfinite(header):
+                delay = max(0.0, header)
+        return min(delay, self.max_retry_delay)
 
     def _content(self, response: httpx.Response) -> str:
         try:
