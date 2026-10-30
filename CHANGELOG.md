@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- The LLM judge client caps `Retry-After` (and backoff) at `max_retry_delay` (60 s) and ignores non-finite values instead of sleeping indefinitely; a `null` judge reason is stored as an empty string rather than `'None'` (#27).
 - Deterministic judges strip Unicode punctuation (curly quotes, ellipses, Unicode dashes) as well as ASCII punctuation, so `“Paris”…` matches `Paris` (#23).
 - JSONL files with a UTF-8 BOM now load, and files that are not valid UTF-8 fail with an error naming the file instead of a raw codec message (#25).
 - Protect token F1 scoring with regression tests for repeated tokens, empty normalized answers, and pass thresholds before score rounding.

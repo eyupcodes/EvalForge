@@ -47,6 +47,11 @@ def test_build_prompt_omits_missing_reference_and_context() -> None:
     assert "CONTEXT" not in prompt
 
 
+@pytest.mark.parametrize("raw", ['{"score": 0.5}', '{"score": 0.5, "reason": null}'])
+def test_parse_verdict_missing_or_null_reason_is_empty(raw: str) -> None:
+    assert parse_verdict(raw) == (0.5, "")
+
+
 def test_parse_verdict_accepts_fenced_json() -> None:
     raw = 'Sure.\n```json\n{"score": 0.8, "reason": "close"}\n```'
 

@@ -139,7 +139,8 @@ def parse_verdict(raw: str) -> tuple[float, str]:
         raise JudgeOutputError(f"score must be a number, got {score!r}")
     if not 0 <= score <= 1:
         raise JudgeOutputError(f"score must be within [0, 1], got {score}")
-    return float(score), str(data.get("reason", ""))
+    reason = data.get("reason")
+    return float(score), "" if reason is None else str(reason)
 
 
 @dataclass
