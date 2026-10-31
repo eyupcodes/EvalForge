@@ -28,6 +28,9 @@ class AgreementReport(BaseModel):
     n: int
     accuracy: float
     kappa: float | None
+    precision: float | None = None
+    recall: float | None = None
+    f1: float | None = None
     confusion: ConfusionMatrix
 
 
@@ -39,6 +42,10 @@ def agreement(
     ``kappa`` is Cohen's kappa. It is ``None`` when it is undefined, which happens
     when judge and human both use a single class for every case (chance agreement
     is then 1), so a degenerate dataset is never reported as perfect agreement.
+
+    ``precision`` (share of judge passes that humans also passed), ``recall`` (share
+    of human passes the judge found) and ``f1`` treat "pass" as the positive class.
+    Each is ``None`` when its denominator is zero.
 
     Raises ``ValueError`` if there are no verdicts, a case id appears twice, or the
     verdict ids and label ids do not match exactly.
@@ -77,4 +84,19 @@ def agreement(
     human_pass = (matrix.tp + matrix.fn) / n
     expected = judge_pass * human_pass + (1 - judge_pass) * (1 - human_pass)
     kappa = None if expected == 1 else (observed - expected) / (1 - expected)
-    return AgreementReport(n=n, accuracy=observed, kappa=kappa, confusion=matrix)
+    precision = _ratio(matrix.tp, matrix.tp + matrix.fp)
+    recall = _ratio(matrix.tp, matrix.tp + matrix.fn)
+    f1 = _ratio(2 * matrix.tp, 2 * matrix.tp + matrix.fp + matrix.fn)
+    return AgreementReport(
+        n=n,
+        accuracy=observed,
+        kappa=kappa,
+        precision=precision,
+        recall=recall,
+        f1=f1,
+        confusion=matrix,
+    )
+
+
+def _ratio(numerator: int, denominator: int) -> float | None:
+    return None if denominator == 0 else numerator / denominator
