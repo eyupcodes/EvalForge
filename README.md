@@ -75,11 +75,17 @@ from evalforge import agreement
 
 report = agreement(verdicts, {"q1": True, "q2": False})
 report.accuracy, report.kappa, report.confusion
+report.precision, report.recall, report.f1
 ```
 
 `kappa` is Cohen's kappa; it is `None` when chance agreement is total (for example
 every label and verdict is "pass"), where kappa is undefined. Verdicts and labels must
 cover exactly the same case ids, otherwise `ValueError` is raised.
+
+`precision`, `recall` and `f1` treat "pass" as the positive class: precision is the share
+of judge passes that humans also passed (low means a lenient judge), recall is the share
+of human passes the judge found (low means a strict judge). Each is `None` when its
+denominator is zero, for example precision for a judge that never passes.
 
 ## Command line
 
@@ -116,7 +122,7 @@ status 1 and a message naming the case.
 status 1 if fewer than 80% of the cases passed, so a judge can gate a CI job directly.
 
 `evalforge agreement` also takes `--json` (print the report as one JSON object, with
-`"kappa": null` when undefined) and `--min-kappa 0.6`, which prints the report and then
+`"kappa": null` when undefined, likewise `precision`, `recall` and `f1`) and `--min-kappa 0.6`, which prints the report and then
 exits with status 1 if kappa is below the threshold or undefined. Use it as a CI gate
 before trusting a judge.
 

@@ -63,3 +63,43 @@ def test_duplicate_verdicts_raise() -> None:
 def test_empty_verdicts_raise() -> None:
     with pytest.raises(ValueError, match="no verdicts"):
         agreement([], {})
+
+
+def test_precision_recall_f1_known_values() -> None:
+    # tp=4, fp=1, fn=2, tn=3 -> precision 4/5, recall 4/6, f1 8/11
+    pairs = [(True, True)] * 4 + [(True, False)] + [(False, True)] * 2
+    pairs += [(False, False)] * 3
+    verdicts = [_verdict(str(i), judge) for i, (judge, _) in enumerate(pairs)]
+    labels = {str(i): human for i, (_, human) in enumerate(pairs)}
+
+    report = agreement(verdicts, labels)
+
+    assert report.precision == pytest.approx(0.8)
+    assert report.recall == pytest.approx(4 / 6)
+    assert report.f1 == pytest.approx(8 / 11)
+
+
+def test_precision_is_none_when_judge_never_passes() -> None:
+    report = agreement(
+        [_verdict("a", False), _verdict("b", False)], {"a": True, "b": False}
+    )
+
+    assert report.precision is None
+    assert report.recall == 0.0
+    assert report.f1 == 0.0
+
+
+def test_recall_is_none_when_humans_never_pass() -> None:
+    report = agreement(
+        [_verdict("a", True), _verdict("b", False)], {"a": False, "b": False}
+    )
+
+    assert report.recall is None
+    assert report.precision == 0.0
+    assert report.f1 == 0.0
+
+
+def test_all_metrics_none_without_any_pass() -> None:
+    report = agreement([_verdict("a", False)], {"a": False})
+
+    assert (report.precision, report.recall, report.f1) == (None, None, None)

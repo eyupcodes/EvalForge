@@ -192,6 +192,9 @@ def test_agreement_prints_report(cases_file, tmp_path):
     assert result.exit_code == 0, result.output
     assert "accuracy: 1.000" in result.output
     assert "kappa:    1.000" in result.output
+    assert "precision: 1.000" in result.output
+    assert "recall:    1.000" in result.output
+    assert "f1:        1.000" in result.output
     assert "tp=1 fp=0 fn=0 tn=1" in result.output
 
 
@@ -410,3 +413,12 @@ def test_run_llm_judge_reports_malformed_provider_response(cases_file, monkeypat
     assert result.exit_code == 1
     assert "unexpected response" in result.output
     assert "Traceback" not in result.output
+
+
+def test_agreement_json_includes_precision_recall_f1(cases_file, tmp_path):
+    verdicts = make_verdicts(cases_file, tmp_path)
+    labels = write_labels(tmp_path, {"q1": True, "q2": False})
+    result = runner.invoke(app, ["agreement", str(verdicts), str(labels), "--json"])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.stdout)
+    assert (data["precision"], data["recall"], data["f1"]) == (1.0, 1.0, 1.0)
