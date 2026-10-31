@@ -182,9 +182,15 @@ def agreement_command(
 
 
 def print_report(report: AgreementReport) -> None:
-    kappa = "undefined" if report.kappa is None else f"{report.kappa:.3f}"
+
+    def show(value: float | None) -> str:
+        return "undefined" if value is None else f"{value:.3f}"
+
     matrix = report.confusion
     typer.echo(f"cases:    {report.n}")
     typer.echo(f"accuracy: {report.accuracy:.3f}")
-    typer.echo(f"kappa:    {kappa}")
+    typer.echo(f"kappa:    {show(report.kappa)}")
+    typer.echo(f"precision: {show(report.precision)}")
+    typer.echo(f"recall:    {show(report.recall)}")
+    typer.echo(f"f1:        {show(report.f1)}")
     typer.echo(f"tp={matrix.tp} fp={matrix.fp} fn={matrix.fn} tn={matrix.tn}")
