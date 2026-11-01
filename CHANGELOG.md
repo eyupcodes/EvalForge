@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- The LLM judge accepts a verdict JSON object embedded in surrounding prose ("Here is my verdict: {...}"), so a chatty reply no longer aborts a run; replies without a valid score are still rejected (#31).
 - Agreement reports include precision, recall and F1 for the "pass" class (`None` when undefined), in the Python API, the `evalforge agreement` text output and `--json` (#29).
 - The LLM judge client caps `Retry-After` (and backoff) at `max_retry_delay` (60 s) and ignores non-finite values instead of sleeping indefinitely; a `null` judge reason is stored as an empty string rather than `'None'` (#27).
 - Deterministic judges strip Unicode punctuation (curly quotes, ellipses, Unicode dashes) as well as ASCII punctuation, so `“Paris”…` matches `Paris` (#23).
