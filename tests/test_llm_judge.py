@@ -61,7 +61,22 @@ def test_parse_verdict_accepts_fenced_json() -> None:
 @pytest.mark.parametrize(
     "raw",
     [
+        'Here is my verdict: {"score": 0.7, "reason": "ok"} Thanks!',
+        'Think {first}. Final: {"score": 0.7, "reason": "ok"}',
+        '{"note": 1} then {"score": 0.7, "reason": "ok"}',
+    ],
+)
+def test_parse_verdict_accepts_json_surrounded_by_prose(raw: str) -> None:
+    assert parse_verdict(raw) == (0.7, "ok")
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
         "not json",
+        'Verdict: {"score": 1.4} done',
+        'Verdict: {"reason": "no score"} done',
+        "Verdict: {unterminated",
         "[1, 2]",
         '{"score": "high"}',
         '{"score": true}',
