@@ -50,7 +50,8 @@ label can never turn into a silent zero.
 ## LLM-as-judge
 
 `LLMJudge` sends a rubric, the question, optional context and reference, and the
-response to any OpenAI-compatible endpoint, and accepts only a strict JSON verdict:
+response to any OpenAI-compatible endpoint, and accepts only a strict JSON verdict (bare, in a code fence, or as the one JSON
+object in a reply that also contains prose):
 
 ```python
 from evalforge.judges.llm import LLMJudge, OpenAICompatibleClient

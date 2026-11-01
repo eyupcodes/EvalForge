@@ -124,14 +124,36 @@ def build_prompt(case: Case, rubric: str) -> str:
     return "\n\n".join(parts)
 
 
+def _embedded_object(text: str) -> object | None:
+    """First JSON object inside prose, preferring one that has a ``score``."""
+    decoder = json.JSONDecoder()
+    first: dict[str, object] | None = None
+    for match in re.finditer(r"\{", text):
+        try:
+            value, _ = decoder.raw_decode(text, match.start())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            if "score" in value:
+                return value
+            first = first or value
+    return first
+
+
 def parse_verdict(raw: str) -> tuple[float, str]:
-    """Extract (score, reason) from a model reply or raise JudgeOutputError."""
+    """Extract (score, reason) from a model reply or raise JudgeOutputError.
+
+    The reply may be bare JSON, JSON in a ``` fence, or a JSON object surrounded
+    by prose ("Here is my verdict: {...}").
+    """
     fenced = _FENCED.search(raw)
     text = fenced.group(1) if fenced else raw.strip()
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise JudgeOutputError(f"judge reply is not JSON: {raw[:120]!r}") from exc
+        data = _embedded_object(raw)
+        if data is None:
+            raise JudgeOutputError(f"judge reply is not JSON: {raw[:120]!r}") from exc
     if not isinstance(data, dict):
         raise JudgeOutputError("judge reply must be a JSON object")
     score = data.get("score")
