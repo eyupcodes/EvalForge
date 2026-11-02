@@ -9,6 +9,8 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC
+from email.utils import parsedate_to_datetime
 from typing import Protocol
 
 import httpx
@@ -87,16 +89,14 @@ class OpenAICompatibleClient:
     def _delay(self, attempt: int, response: httpx.Response | None) -> float:
         """Seconds to wait before retrying, never more than ``max_retry_delay``.
 
-        Uses ``Retry-After`` when it is a finite number, else exponential backoff.
+        Uses ``Retry-After`` when it is a finite number of seconds or an HTTP date,
+        else exponential backoff.
         """
         delay = self.backoff * 2**attempt
         if response is not None:
-            try:
-                header = float(response.headers["Retry-After"])
-            except (KeyError, ValueError):
-                header = math.nan
-            if math.isfinite(header):
-                delay = max(0.0, header)
+            header = _retry_after_seconds(response.headers.get("Retry-After"))
+            if header is not None:
+                delay = header
         return min(delay, self.max_retry_delay)
 
     def _content(self, response: httpx.Response) -> str:
@@ -111,6 +111,26 @@ class OpenAICompatibleClient:
                 f"unexpected response from {self.base_url}: empty completion"
             )
         return content
+
+
+def _retry_after_seconds(value: str | None) -> float | None:
+    """Seconds named by a ``Retry-After`` value, or ``None`` if unusable.
+
+    Accepts a number of seconds or an HTTP date; a date in the past means "now".
+    """
+    if value is None:
+        return None
+    try:
+        seconds = float(value)
+    except ValueError:
+        try:
+            when = parsedate_to_datetime(value)
+        except (TypeError, ValueError, IndexError):
+            return None
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=UTC)
+        seconds = when.timestamp() - time.time()
+    return max(0.0, seconds) if math.isfinite(seconds) else None
 
 
 def build_prompt(case: Case, rubric: str) -> str:
