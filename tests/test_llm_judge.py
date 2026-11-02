@@ -270,3 +270,26 @@ def test_openai_client_gives_up_after_max_retries(
         client.complete("s", "u")
     assert len(requests) == 4
     assert len(sleeps) == 3
+
+
+@pytest.mark.parametrize(
+    ("retry_after", "expected"),
+    [
+        ("Wed, 21 Oct 2026 07:28:05 GMT", 5.0),
+        ("Wed, 21 Oct 2026 07:28:05", 5.0),
+        ("Wed, 21 Oct 2026 07:27:00 GMT", 0.0),
+        ("Wed, 21 Oct 2026 09:00:00 GMT", 60.0),
+        ("not a date", 1.0),
+    ],
+)
+def test_openai_client_honours_retry_after_http_date(
+    monkeypatch: pytest.MonkeyPatch, retry_after: str, expected: float
+) -> None:
+    # 2026-10-21 07:28:00 UTC
+    monkeypatch.setattr("evalforge.judges.llm.time.time", lambda: 1792567680.0)
+    sleeps: list[float] = []
+    limited = httpx.Response(429, headers={"Retry-After": retry_after})
+    client, _ = _retry_client(monkeypatch, [limited, OK], sleeps)
+
+    assert client.complete("s", "u") == "done"
+    assert sleeps == [expected]
