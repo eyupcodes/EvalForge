@@ -9,7 +9,8 @@ can be compared against human labels before you rely on them.
 
 ## Status
 
-Early development. Planned for the first milestone:
+Early development: the first milestone is implemented, and the API may still change
+before a stable release. Available today:
 
 - Deterministic judges: exact match, contains-all, regex, token F1
 - LLM-as-judge with a strict JSON verdict contract and any OpenAI-compatible endpoint
