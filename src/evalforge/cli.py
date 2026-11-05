@@ -164,10 +164,20 @@ def agreement_command(
             help="Exit 1 if kappa is below this value or undefined.",
         ),
     ] = None,
+    bootstrap: Annotated[
+        int,
+        typer.Option(
+            min=0,
+            help="Bootstrap resamples for 95% intervals (0: off).",
+        ),
+    ] = 0,
+    seed: Annotated[int, typer.Option(help="Seed for --bootstrap.")] = 0,
 ) -> None:
     """Compare judge verdicts with human pass/fail labels."""
     try:
-        report = agreement(read_verdicts(verdicts), read_labels(labels))
+        report = agreement(
+            read_verdicts(verdicts), read_labels(labels), bootstrap=bootstrap, seed=seed
+        )
     except (JsonlError, ValueError) as exc:
         fail(str(exc))
     if as_json:
@@ -194,3 +204,17 @@ def print_report(report: AgreementReport) -> None:
     typer.echo(f"recall:    {show(report.recall)}")
     typer.echo(f"f1:        {show(report.f1)}")
     typer.echo(f"tp={matrix.tp} fp={matrix.fp} fn={matrix.fn} tn={matrix.tn}")
+    if report.ci is not None:
+        ci = report.ci
+
+        def span(low: float | None, high: float | None) -> str:
+            if low is None or high is None:
+                return "undefined"
+            return f"[{low:.3f}, {high:.3f}]"
+
+        typer.echo(
+            f"{ci.level:.0%} bootstrap interval "
+            f"({ci.resamples} resamples, seed {ci.seed})"
+        )
+        typer.echo(f"  accuracy: {span(ci.accuracy.low, ci.accuracy.high)}")
+        typer.echo(f"  kappa:    {span(ci.kappa.low, ci.kappa.high)}")
