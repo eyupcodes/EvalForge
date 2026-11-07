@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- `evalforge run` rejects judge options that the selected judge does not use (`--threshold`, `--phrase`, `--pattern`, `--rubric`, `--model`) instead of silently ignoring them (#39).
 - The LLM judge client honours `Retry-After` given as an HTTP date, not only as seconds (#33).
 - The LLM judge accepts a verdict JSON object embedded in surrounding prose ("Here is my verdict: {...}"), so a chatty reply no longer aborts a run; replies without a valid score are still rejected (#31).
 - Agreement reports include precision, recall and F1 for the "pass" class (`None` when undefined), in the Python API, the `evalforge agreement` text output and `--json` (#29).
