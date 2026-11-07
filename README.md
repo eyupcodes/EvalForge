@@ -106,6 +106,9 @@ evalforge agreement verdicts.jsonl labels.jsonl
 `-o`, verdicts go to stdout. Malformed input exits with status 1 and a message naming
 the file and line.
 
+Options that the chosen judge does not use (for example `--threshold` with `regex`,
+or `--pattern` with `token_f1`) are rejected with status 1 instead of being ignored.
+
 `--judge llm` runs the LLM-as-judge over the same dataset. It needs `--rubric` and
 `--model`, and talks to any OpenAI-compatible endpoint (`--base-url`, default
 `https://api.openai.com/v1`) using the key in the environment variable named by

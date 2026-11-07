@@ -112,6 +112,33 @@ def test_run_rejects_bad_judge_options(cases_file, args, message):
     assert "Traceback" not in result.output
 
 
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (["--judge", "regex", "--pattern", "a", "--threshold", "0.8"], "--threshold"),
+        (["--judge", "exact_match", "--threshold", "0.5"], "--threshold"),
+        (["--judge", "exact_match", "--phrase", "hugo"], "--phrase"),
+        (["--judge", "token_f1", "--pattern", "^a"], "--pattern"),
+        (["--judge", "token_f1", "--rubric", "r"], "--rubric"),
+        (["--judge", "regex", "--pattern", "a", "--model", "m"], "--model"),
+    ],
+)
+def test_run_rejects_options_the_judge_does_not_use(cases_file, args, message):
+    result = runner.invoke(app, ["run", str(cases_file), *args])
+    assert result.exit_code == 1
+    assert f"{message} does not apply to --judge" in result.output
+    assert "passed" not in result.output
+
+
+def test_run_accepts_options_that_apply_to_the_judge(cases_file):
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "contains_all", "--phrase", "hugo"]
+        + ["--threshold", "0.5"],
+    )
+    assert result.exit_code == 0, result.output
+
+
 def test_run_reports_missing_reference_without_traceback(tmp_path):
     path = tmp_path / "c.jsonl"
     path.write_text('{"id": "a", "input": "q", "output": "x"}\n')

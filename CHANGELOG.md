@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- `evalforge run` rejects judge options that the selected judge does not use (`--threshold`, `--phrase`, `--pattern`, `--rubric`, `--model`) instead of silently ignoring them (#39).
 - `evalforge agreement --bootstrap N [--seed S]` and `agreement(..., bootstrap=N)` add seeded 95% bootstrap confidence intervals for accuracy and kappa, so a kappa from a small label set is shown with its uncertainty (#37).
 - The LLM judge client honours `Retry-After` given as an HTTP date, not only as seconds (#33).
 - The LLM judge accepts a verdict JSON object embedded in surrounding prose ("Here is my verdict: {...}"), so a chatty reply no longer aborts a run; replies without a valid score are still rejected (#31).

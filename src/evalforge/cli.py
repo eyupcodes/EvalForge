@@ -51,6 +51,22 @@ def fail(message: str) -> NoReturn:
     raise typer.Exit(code=1)
 
 
+# Options each judge reads; any other judge-specific option is rejected.
+OPTION_JUDGES = {
+    "--threshold": {JudgeName.token_f1, JudgeName.contains_all, JudgeName.llm},
+    "--phrase": {JudgeName.contains_all},
+    "--pattern": {JudgeName.regex},
+    "--rubric": {JudgeName.llm},
+    "--model": {JudgeName.llm},
+}
+
+
+def reject_inapplicable_options(name: JudgeName, given: dict[str, object]) -> None:
+    for option, judges in OPTION_JUDGES.items():
+        if given.get(option) and name not in judges:
+            fail(f"{option} does not apply to --judge {name.value}")
+
+
 def build_llm_client(model: str, base_url: str, api_key_env: str) -> JudgeClient:
     return OpenAICompatibleClient(
         model=model, base_url=base_url, api_key_env=api_key_env
@@ -127,6 +143,16 @@ def run(
     ] = None,
 ) -> None:
     """Judge every case and write one verdict per line (stdout by default)."""
+    reject_inapplicable_options(
+        judge,
+        {
+            "--threshold": threshold is not None,
+            "--phrase": phrase,
+            "--pattern": pattern is not None,
+            "--rubric": rubric is not None,
+            "--model": model is not None,
+        },
+    )
     selected = build_judge(
         judge, threshold, phrase or [], pattern, rubric, model, base_url, api_key_env
     )
