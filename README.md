@@ -131,6 +131,13 @@ status 1 if fewer than 80% of the cases passed, so a judge can gate a CI job dir
 exits with status 1 if kappa is below the threshold or undefined. Use it as a CI gate
 before trusting a judge.
 
+`--bootstrap 1000` adds 95% bootstrap intervals for accuracy and kappa (cases are
+resampled with replacement; `--seed` makes the result reproducible). On a small label
+set the interval is often wide, which is the point: a kappa of 0.6 from 40 cases is weak
+evidence, and `--min-kappa` should be set with that in mind. In Python:
+`agreement(verdicts, labels, bootstrap=1000, seed=0).ci`. Resamples where kappa is
+undefined are excluded from its interval, which is `null` if every resample was.
+
 ## Development
 
 Requires Python 3.11+.

@@ -449,3 +449,54 @@ def test_agreement_json_includes_precision_recall_f1(cases_file, tmp_path):
     assert result.exit_code == 0, result.output
     data = json.loads(result.stdout)
     assert (data["precision"], data["recall"], data["f1"]) == (1.0, 1.0, 1.0)
+
+
+def test_agreement_bootstrap_prints_and_serialises_intervals(cases_file, tmp_path):
+    verdicts = make_verdicts(cases_file, tmp_path)
+    labels = write_labels(tmp_path, {"q1": True, "q2": False})
+    args = ["agreement", str(verdicts), str(labels), "--bootstrap", "50", "--seed", "2"]
+
+    text = runner.invoke(app, args)
+    assert text.exit_code == 0, text.output
+    assert "95% bootstrap interval (50 resamples, seed 2)" in text.output
+    assert "  accuracy: [1.000, 1.000]" in text.output
+    assert "  kappa:    [1.000, 1.000]" in text.output
+
+    as_json = runner.invoke(app, [*args, "--json"])
+    ci = json.loads(as_json.stdout)["ci"]
+    assert ci["resamples"] == 50
+    assert ci["kappa"] == {"low": 1.0, "high": 1.0}
+
+
+def test_agreement_has_no_interval_section_by_default(cases_file, tmp_path):
+    verdicts = make_verdicts(cases_file, tmp_path)
+    labels = write_labels(tmp_path, {"q1": True, "q2": False})
+    result = runner.invoke(app, ["agreement", str(verdicts), str(labels)])
+    assert "bootstrap" not in result.output
+    assert (
+        json.loads(
+            runner.invoke(
+                app, ["agreement", str(verdicts), str(labels), "--json"]
+            ).stdout
+        )["ci"]
+        is None
+    )
+
+
+def test_agreement_rejects_negative_bootstrap(cases_file, tmp_path):
+    verdicts = make_verdicts(cases_file, tmp_path)
+    labels = write_labels(tmp_path, {"q1": True, "q2": False})
+    result = runner.invoke(
+        app, ["agreement", str(verdicts), str(labels), "--bootstrap", "-1"]
+    )
+    assert result.exit_code == 2
+
+
+def test_print_report_marks_undefined_intervals(capsys):
+    from evalforge.agreement import agreement
+    from evalforge.cli import print_report
+    from evalforge.models import Verdict
+
+    verdict = Verdict(case_id="a", judge="j", score=1.0, passed=True)
+    print_report(agreement([verdict], {"a": True}, bootstrap=5))
+    assert "  kappa:    undefined" in capsys.readouterr().out

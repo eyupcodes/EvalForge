@@ -103,3 +103,57 @@ def test_all_metrics_none_without_any_pass() -> None:
     report = agreement([_verdict("a", False)], {"a": False})
 
     assert (report.precision, report.recall, report.f1) == (None, None, None)
+
+
+def _mixed_verdicts():
+    pairs = [(True, True)] * 12 + [(True, False)] * 3 + [(False, True)] * 4
+    pairs += [(False, False)] * 11
+    verdicts = [_verdict(f"c{i}", p) for i, (p, _) in enumerate(pairs)]
+    labels = {f"c{i}": h for i, (_, h) in enumerate(pairs)}
+    return verdicts, labels
+
+
+def test_no_intervals_by_default() -> None:
+    verdicts, labels = _mixed_verdicts()
+
+    assert agreement(verdicts, labels).ci is None
+
+
+def test_bootstrap_intervals_bracket_the_estimate_and_are_seeded() -> None:
+    verdicts, labels = _mixed_verdicts()
+
+    report = agreement(verdicts, labels, bootstrap=500, seed=3)
+    again = agreement(verdicts, labels, bootstrap=500, seed=3)
+    other = agreement(verdicts, labels, bootstrap=500, seed=4)
+
+    ci = report.ci
+    assert ci is not None
+    assert (ci.level, ci.resamples, ci.seed) == (0.95, 500, 3)
+    assert ci.accuracy.low < report.accuracy < ci.accuracy.high
+    assert ci.kappa.low < report.kappa < ci.kappa.high
+    assert ci.accuracy.low >= 0.0 and ci.accuracy.high <= 1.0
+    assert again.ci == ci
+    assert other.ci != ci
+
+
+def test_bootstrap_with_a_single_case_has_degenerate_kappa() -> None:
+    report = agreement([_verdict("a", True)], {"a": True}, bootstrap=20)
+
+    assert report.ci is not None
+    assert (report.ci.accuracy.low, report.ci.accuracy.high) == (1.0, 1.0)
+    assert (report.ci.kappa.low, report.ci.kappa.high) == (None, None)
+
+
+def test_bootstrap_ignores_undefined_kappa_resamples() -> None:
+    # Two cases: resamples that draw the same case twice have undefined kappa.
+    verdicts = [_verdict("a", True), _verdict("b", False)]
+
+    report = agreement(verdicts, {"a": True, "b": False}, bootstrap=200, seed=1)
+
+    assert report.ci is not None
+    assert report.ci.kappa.low == 1.0 and report.ci.kappa.high == 1.0
+
+
+def test_negative_bootstrap_is_rejected() -> None:
+    with pytest.raises(ValueError, match="bootstrap"):
+        agreement([_verdict("a", True)], {"a": True}, bootstrap=-1)
