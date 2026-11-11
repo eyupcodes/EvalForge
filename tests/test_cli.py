@@ -500,3 +500,47 @@ def test_print_report_marks_undefined_intervals(capsys):
     verdict = Verdict(case_id="a", judge="j", score=1.0, passed=True)
     print_report(agreement([verdict], {"a": True}, bootstrap=5))
     assert "  kappa:    undefined" in capsys.readouterr().out
+
+
+def test_run_rejects_missing_output_directory(cases_file, tmp_path):
+    out = tmp_path / "missing" / "verdicts.jsonl"
+    result = runner.invoke(
+        app, ["run", str(cases_file), "--judge", "exact_match", "-o", str(out)]
+    )
+    assert result.exit_code == 1
+    assert "directory does not exist" in result.output
+    assert not out.parent.exists()
+
+
+def test_run_checks_output_before_calling_the_llm_judge(
+    cases_file, tmp_path, monkeypatch
+):
+    calls: list[str] = []
+
+    class RecordingClient:
+        def complete(self, system: str, user: str) -> str:
+            calls.append(user)
+            return '{"score": 1}'
+
+    monkeypatch.setattr("evalforge.cli.build_llm_client", lambda *a: RecordingClient())
+    result = runner.invoke(
+        app,
+        [
+            *["run", str(cases_file), "--judge", "llm", "--rubric", "r"],
+            *["--model", "m", "-o", str(tmp_path)],
+        ],
+    )
+    assert result.exit_code == 1
+    assert "is a directory" in result.output
+    assert calls == []
+
+
+def test_run_keeps_existing_output_when_the_check_fails(cases_file, tmp_path):
+    out = tmp_path / "verdicts.jsonl"
+    out.write_text("keep me\n", encoding="utf-8")
+    missing = tmp_path / "cases-missing.jsonl"
+    result = runner.invoke(
+        app, ["run", str(missing), "--judge", "exact_match", "-o", str(out)]
+    )
+    assert result.exit_code == 1
+    assert out.read_text(encoding="utf-8") == "keep me\n"
