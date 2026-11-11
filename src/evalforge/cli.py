@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from enum import StrEnum
@@ -65,6 +66,23 @@ def reject_inapplicable_options(name: JudgeName, given: dict[str, object]) -> No
     for option, judges in OPTION_JUDGES.items():
         if given.get(option) and name not in judges:
             fail(f"{option} does not apply to --judge {name.value}")
+
+
+def check_output_path(path: Path | None) -> None:
+    """Fail before any judging if ``path`` cannot be written.
+
+    Nothing is created or truncated, so a failed run leaves an existing file alone.
+    """
+    if path is None:
+        return
+    if path.is_dir():
+        fail(f"cannot write {path}: is a directory")
+    parent = path.absolute().parent
+    if not parent.is_dir():
+        fail(f"cannot write {path}: directory does not exist: {parent}")
+    target = path if path.exists() else parent
+    if not os.access(target, os.W_OK):
+        fail(f"cannot write {path}: permission denied")
 
 
 def build_llm_client(model: str, base_url: str, api_key_env: str) -> JudgeClient:
@@ -156,6 +174,7 @@ def run(
     selected = build_judge(
         judge, threshold, phrase or [], pattern, rubric, model, base_url, api_key_env
     )
+    check_output_path(output)
     try:
         loaded = read_cases(cases)
         verdicts = [selected.judge(case) for case in loaded]
