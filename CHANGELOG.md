@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Deterministic judges apply NFKC normalization and case folding before comparing, so composed vs decomposed accents, `ß`/`SS`, ligatures and full-width digits no longer score as different text (#45).
 - `evalforge run` checks `--output` before judging, so an unwritable path no longer discards the verdicts (and the API spend) of a finished `--judge llm` run (#43).
 - `evalforge run` rejects judge options that the selected judge does not use (`--threshold`, `--phrase`, `--pattern`, `--rubric`, `--model`) instead of silently ignoring them (#39).
 - `evalforge agreement --bootstrap N [--seed S]` and `agreement(..., bootstrap=N)` add seeded 95% bootstrap confidence intervals for accuracy and kappa, so a kappa from a small label set is shown with its uncertainty (#37).

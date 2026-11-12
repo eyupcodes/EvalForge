@@ -26,6 +26,18 @@ def test_normalize_strips_unicode_punctuation() -> None:
     )
 
 
+def test_normalize_unifies_unicode_forms_and_case_folds() -> None:
+    assert normalize("Caf\u00e9") == normalize("Cafe\u0301")
+    assert normalize("Stra\u00dfe") == normalize("STRASSE")
+    assert normalize("\ufb01ne") == normalize("fine")
+    assert normalize("\uff11\uff12\uff13") == "123"
+
+
+def test_exact_match_accepts_decomposed_accents() -> None:
+    case = Case(id="u", input="q", output="Cafe\u0301", reference="Caf\u00e9")
+    assert ExactMatchJudge().judge(case).passed is True
+
+
 def test_exact_match_ignores_unicode_quotes_and_ellipsis() -> None:
     verdict = ExactMatchJudge().judge(make_case("\u201cParis\u201d\u2026"))
 
