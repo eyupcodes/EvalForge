@@ -15,8 +15,15 @@ _PUNCT = str.maketrans("", "", string.punctuation)
 
 
 def normalize(text: str) -> str:
-    """Lowercase, drop ASCII and Unicode punctuation and collapse whitespace."""
-    stripped = text.lower().translate(_PUNCT)
+    """Apply NFKC and case folding, drop punctuation and collapse whitespace.
+
+    NFKC makes composed and decomposed accents (and compatibility forms such as
+    ligatures or full-width digits) equal; case folding maps ``\u00df`` to ``ss``.
+    """
+    folded = unicodedata.normalize(
+        "NFKC", unicodedata.normalize("NFKC", text).casefold()
+    )
+    stripped = folded.translate(_PUNCT)
     kept = (ch for ch in stripped if not unicodedata.category(ch).startswith("P"))
     return " ".join("".join(kept).split())
 
