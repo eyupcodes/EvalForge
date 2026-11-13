@@ -391,6 +391,47 @@ def test_run_llm_judge_reports_unparseable_reply(cases_file, fake_llm):
     assert "q1" in result.output
 
 
+def test_run_keeps_verdicts_judged_before_a_failure(cases_file, tmp_path, fake_llm):
+    fake_llm('{"score": 1, "reason": "ok"}', "not json", "still not json")
+    out = tmp_path / "verdicts.jsonl"
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "llm", "--rubric", "r", "--model", "m"]
+        + ["-o", str(out)],
+    )
+    assert result.exit_code == 1
+    assert "judged 1/2 cases before the failure" in result.output
+    rows = [json.loads(line) for line in out.read_text().splitlines()]
+    assert [r["case_id"] for r in rows] == ["q1"]
+    assert "passed (" not in result.output
+
+
+def test_run_prints_verdicts_judged_before_a_failure_to_stdout(cases_file, fake_llm):
+    fake_llm('{"score": 1, "reason": "ok"}', "not json", "still not json")
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "llm", "--rubric", "r", "--model", "m"],
+    )
+    assert result.exit_code == 1
+    assert json.loads(result.stdout.splitlines()[0])["case_id"] == "q1"
+    assert "judged 1/2 cases before the failure" in result.output
+
+
+def test_run_creates_no_output_when_the_first_case_fails(
+    cases_file, tmp_path, fake_llm
+):
+    fake_llm("not json", "still not json")
+    out = tmp_path / "verdicts.jsonl"
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "llm", "--rubric", "r", "--model", "m"]
+        + ["-o", str(out)],
+    )
+    assert result.exit_code == 1
+    assert "before the failure" not in result.output
+    assert not out.exists()
+
+
 def test_run_llm_judge_reports_missing_api_key(cases_file, monkeypatch):
     monkeypatch.delenv("EVALFORGE_TEST_KEY", raising=False)
     result = runner.invoke(
