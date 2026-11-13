@@ -123,6 +123,10 @@ evalforge run cases.jsonl --judge llm --model gpt-4o-mini \
 A missing key, an HTTP error or a reply that is not a valid verdict stops the run with
 status 1 and a message naming the case.
 
+If a judge fails partway through a run (an unparseable reply, an HTTP error), the verdicts for the
+cases judged so far are still written to `--output` (or stdout) before the command exits with
+status 1; the error message says how many cases were judged, so the file is known to be incomplete.
+
 `evalforge run --min-pass-rate 0.8` writes the verdicts as usual, then exits with
 status 1 if fewer than 80% of the cases passed, so a judge can gate a CI job directly.
 
