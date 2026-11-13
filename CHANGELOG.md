@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- `evalforge run` writes the verdicts judged so far before exiting 1 when a later case fails, and the error says how many cases were judged, so a failure at case 400 of 500 no longer discards the other 399 verdicts (#47).
 - Deterministic judges apply NFKC normalization and case folding before comparing, so composed vs decomposed accents, `ß`/`SS`, ligatures and full-width digits no longer score as different text (#45).
 - `evalforge run` checks `--output` before judging, so an unwritable path no longer discards the verdicts (and the API spend) of a finished `--judge llm` run (#43).
 - `evalforge run` rejects judge options that the selected judge does not use (`--threshold`, `--phrase`, `--pattern`, `--rubric`, `--model`) instead of silently ignoring them (#39).

@@ -28,6 +28,7 @@ from evalforge.judges import (
     TokenF1Judge,
 )
 from evalforge.judges.llm import JudgeClient, LLMJudge, OpenAICompatibleClient
+from evalforge.models import Verdict
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_API_KEY_ENV = "OPENAI_API_KEY"
@@ -124,6 +125,14 @@ def build_judge(
         fail(f"invalid --pattern: {exc}")
 
 
+def emit_verdicts(verdicts: list[Verdict], output: Path | None) -> None:
+    if output is None:
+        for verdict in verdicts:
+            sys.stdout.write(verdict.model_dump_json() + "\n")
+    else:
+        write_verdicts(verdicts, output)
+
+
 @app.command()
 def run(
     cases: Annotated[Path, typer.Argument(help="JSONL file of cases.")],
@@ -175,14 +184,22 @@ def run(
         judge, threshold, phrase or [], pattern, rubric, model, base_url, api_key_env
     )
     check_output_path(output)
+    verdicts: list[Verdict] = []
     try:
         loaded = read_cases(cases)
-        verdicts = [selected.judge(case) for case in loaded]
-        if output is None:
-            for verdict in verdicts:
-                sys.stdout.write(verdict.model_dump_json() + "\n")
-        else:
-            write_verdicts(verdicts, output)
+        try:
+            for case in loaded:
+                verdicts.append(selected.judge(case))
+        except (ValueError, RuntimeError, httpx.HTTPError) as exc:
+            if not verdicts:
+                raise
+            # Keep what was already judged (and paid for) before failing.
+            emit_verdicts(verdicts, output)
+            raise RuntimeError(
+                f"{exc} (judged {len(verdicts)}/{len(loaded)} cases before the "
+                "failure; the verdicts written are incomplete)"
+            ) from exc
+        emit_verdicts(verdicts, output)
     except (JsonlError, ValueError, OSError, RuntimeError, httpx.HTTPError) as exc:
         fail(str(exc))
     passed = sum(v.passed for v in verdicts)
