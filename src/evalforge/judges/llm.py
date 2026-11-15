@@ -92,7 +92,7 @@ class OpenAICompatibleClient:
         Uses ``Retry-After`` when it is a finite number of seconds or an HTTP date,
         else exponential backoff.
         """
-        delay = self.backoff * 2**attempt
+        delay: float = self.backoff * 2.0**attempt
         if response is not None:
             header = _retry_after_seconds(response.headers.get("Retry-After"))
             if header is not None:
