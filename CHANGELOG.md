@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Dependabot proposes monthly, grouped updates for GitHub Actions and pip dependencies (#51).
 - `mypy` runs in strict mode; the LLM judge's retry delay is typed as a float instead of leaking `Any` (#49).
 - `evalforge run` writes the verdicts judged so far before exiting 1 when a later case fails, and the error says how many cases were judged, so a failure at case 400 of 500 no longer discards the other 399 verdicts (#47).
 - Deterministic judges apply NFKC normalization and case folding before comparing, so composed vs decomposed accents, `ß`/`SS`, ligatures and full-width digits no longer score as different text (#45).
