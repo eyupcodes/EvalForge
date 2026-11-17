@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- The LLM judge client joins `message.content` returned as typed parts (`[{"type": "text", "text": ...}]`) instead of rejecting it as an empty completion, and a reply with an `error` and no completion reports the server's message (#54).
 - Dependabot proposes monthly, grouped updates for GitHub Actions and pip dependencies (#51).
 - `mypy` runs in strict mode; the LLM judge's retry delay is typed as a float instead of leaking `Any` (#49).
 - `evalforge run` writes the verdicts judged so far before exiting 1 when a later case fails, and the error says how many cases were judged, so a failure at case 400 of 500 no longer discards the other 399 verdicts (#47).

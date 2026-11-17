@@ -170,6 +170,63 @@ def test_openai_client_rejects_unexpected_response_shapes(
         client.complete("s", "u")
 
 
+def _client_replying(
+    monkeypatch: pytest.MonkeyPatch, response: httpx.Response
+) -> OpenAICompatibleClient:
+    monkeypatch.setenv("TEST_KEY", "secret")
+    return OpenAICompatibleClient(
+        model="m",
+        api_key_env="TEST_KEY",
+        transport=httpx.MockTransport(lambda request: response),
+    )
+
+
+def test_openai_client_joins_typed_content_parts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parts = [
+        {"type": "text", "text": '{"score": 1, '},
+        {"type": "text", "text": '"reason": "ok"}'},
+    ]
+    client = _client_replying(
+        monkeypatch,
+        httpx.Response(200, json={"choices": [{"message": {"content": parts}}]}),
+    )
+
+    assert client.complete("s", "u") == '{"score": 1, "reason": "ok"}'
+
+
+@pytest.mark.parametrize(
+    "content", [[], [{"type": "image_url", "image_url": {"url": "x"}}], 42]
+)
+def test_openai_client_rejects_content_without_text(
+    monkeypatch: pytest.MonkeyPatch, content: object
+) -> None:
+    client = _client_replying(
+        monkeypatch,
+        httpx.Response(200, json={"choices": [{"message": {"content": content}}]}),
+    )
+
+    with pytest.raises(RuntimeError, match="empty completion"):
+        client.complete("s", "u")
+
+
+@pytest.mark.parametrize(
+    "body, detail",
+    [
+        ({"error": {"message": "model overloaded"}}, "model overloaded"),
+        ({"error": "quota exceeded"}, "quota exceeded"),
+    ],
+)
+def test_openai_client_reports_server_error_message(
+    monkeypatch: pytest.MonkeyPatch, body: dict[str, object], detail: str
+) -> None:
+    client = _client_replying(monkeypatch, httpx.Response(200, json=body))
+
+    with pytest.raises(RuntimeError, match=f"no completion in reply: {detail}"):
+        client.complete("s", "u")
+
+
 def _retry_client(
     monkeypatch: pytest.MonkeyPatch,
     replies: list[httpx.Response | Exception],
