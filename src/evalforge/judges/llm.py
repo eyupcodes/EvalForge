@@ -100,17 +100,39 @@ class OpenAICompatibleClient:
         return min(delay, self.max_retry_delay)
 
     def _content(self, response: httpx.Response) -> str:
+        body: object = None
         try:
-            content = response.json()["choices"][0]["message"]["content"]
+            body = response.json()
+            content = body["choices"][0]["message"]["content"]  # type: ignore[index]
         except (ValueError, LookupError, TypeError) as exc:
+            detail = _error_message(body)
+            suffix = f": {detail}" if detail else ""
             raise RuntimeError(
                 f"unexpected response from {self.base_url}: no completion in reply"
+                f"{suffix}"
             ) from exc
+        if isinstance(content, list):
+            # Some servers return typed parts: [{"type": "text", "text": "..."}].
+            parts = [
+                part["text"]
+                for part in content
+                if isinstance(part, dict) and isinstance(part.get("text"), str)
+            ]
+            content = "".join(parts) if parts else None
         if not isinstance(content, str):
             raise RuntimeError(
                 f"unexpected response from {self.base_url}: empty completion"
             )
         return content
+
+
+def _error_message(body: object) -> str | None:
+    """The ``error`` text of an OpenAI-style error reply, if there is one."""
+    error = body.get("error") if isinstance(body, dict) else None
+    if isinstance(error, dict):
+        message = error.get("message")
+        return str(message) if message else None
+    return error if isinstance(error, str) and error else None
 
 
 def _retry_after_seconds(value: str | None) -> float | None:
