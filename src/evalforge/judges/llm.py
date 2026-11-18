@@ -217,6 +217,12 @@ class LLMJudge:
     max_attempts: int = 2
     name: str = "llm_judge"
 
+    def __post_init__(self) -> None:
+        if self.max_attempts < 1:
+            raise ValueError(
+                f"max_attempts must be at least 1, got {self.max_attempts}"
+            )
+
     def judge(self, case: Case) -> Verdict:
         prompt = build_prompt(case, self.rubric)
         last_error: JudgeOutputError | None = None

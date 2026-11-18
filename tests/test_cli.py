@@ -585,3 +585,41 @@ def test_run_keeps_existing_output_when_the_check_fails(cases_file, tmp_path):
     )
     assert result.exit_code == 1
     assert out.read_text(encoding="utf-8") == "keep me\n"
+
+
+def test_run_llm_judge_max_attempts_allows_more_retries(cases_file, fake_llm):
+    fake_llm("nope", "nope", '{"score": 1}', '{"score": 1}')
+    result = runner.invoke(
+        app,
+        [
+            *["run", str(cases_file), "--judge", "llm", "--rubric", "r"],
+            *["--model", "m", "--max-attempts", "3"],
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "2/2 passed" in result.output
+
+
+def test_run_llm_judge_default_attempts_is_two(cases_file, fake_llm):
+    fake_llm("nope", "nope", '{"score": 1}', '{"score": 1}')
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "llm", "--rubric", "r", "--model", "m"],
+    )
+    assert result.exit_code == 1
+    assert "after 2 attempts" in result.output
+
+
+def test_run_max_attempts_rejected_for_other_judges(cases_file):
+    result = runner.invoke(
+        app, ["run", str(cases_file), "--judge", "exact_match", "--max-attempts", "3"]
+    )
+    assert result.exit_code == 1
+    assert "--max-attempts does not apply to --judge exact_match" in result.output
+
+
+def test_run_max_attempts_must_be_positive(cases_file):
+    result = runner.invoke(
+        app, ["run", str(cases_file), "--judge", "llm", "--max-attempts", "0"]
+    )
+    assert result.exit_code == 2

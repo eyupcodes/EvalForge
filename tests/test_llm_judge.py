@@ -350,3 +350,8 @@ def test_openai_client_honours_retry_after_http_date(
 
     assert client.complete("s", "u") == "done"
     assert sleeps == [expected]
+
+
+def test_llm_judge_rejects_non_positive_max_attempts():
+    with pytest.raises(ValueError, match="max_attempts must be at least 1"):
+        LLMJudge(client=object(), rubric="r", max_attempts=0)  # type: ignore[arg-type]
