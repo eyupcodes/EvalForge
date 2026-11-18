@@ -120,6 +120,8 @@ evalforge run cases.jsonl --judge llm --model gpt-4o-mini \
   --rubric "Is the answer factually correct?" -o verdicts.jsonl
 ```
 
+`--max-attempts N` (default 2) sets how many times a malformed reply is retried per case before the run stops.
+
 A missing key, an HTTP error or a reply that is not a valid verdict stops the run with
 status 1 and a message naming the case.
 

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- `evalforge run --max-attempts N` sets the LLM judge's retry budget for malformed replies (default 2, only valid with `--judge llm`), and `LLMJudge` rejects `max_attempts < 1` instead of failing with a misleading "after 0 attempts" error (#56).
 - The LLM judge client joins `message.content` returned as typed parts (`[{"type": "text", "text": ...}]`) instead of rejecting it as an empty completion, and a reply with an `error` and no completion reports the server's message (#54).
 - Dependabot proposes monthly, grouped updates for GitHub Actions and pip dependencies (#51).
 - `mypy` runs in strict mode; the LLM judge's retry delay is typed as a float instead of leaking `Any` (#49).
