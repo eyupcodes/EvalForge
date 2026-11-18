@@ -60,6 +60,7 @@ OPTION_JUDGES = {
     "--pattern": {JudgeName.regex},
     "--rubric": {JudgeName.llm},
     "--model": {JudgeName.llm},
+    "--max-attempts": {JudgeName.llm},
 }
 
 
@@ -101,6 +102,7 @@ def build_judge(
     model: str | None = None,
     base_url: str = DEFAULT_BASE_URL,
     api_key_env: str = DEFAULT_API_KEY_ENV,
+    max_attempts: int | None = None,
 ) -> Judge:
     if name is JudgeName.exact_match:
         return ExactMatchJudge()
@@ -110,7 +112,12 @@ def build_judge(
         if not model:
             fail("--judge llm needs --model")
         client = build_llm_client(model, base_url, api_key_env)
-        return LLMJudge(client, rubric, 0.5 if threshold is None else threshold)
+        return LLMJudge(
+            client,
+            rubric,
+            0.5 if threshold is None else threshold,
+            2 if max_attempts is None else max_attempts,
+        )
     if name is JudgeName.token_f1:
         return TokenF1Judge() if threshold is None else TokenF1Judge(threshold)
     if name is JudgeName.contains_all:
@@ -160,6 +167,13 @@ def run(
     api_key_env: Annotated[
         str, typer.Option(help="Environment variable holding the API key (llm judge).")
     ] = DEFAULT_API_KEY_ENV,
+    max_attempts: Annotated[
+        int | None,
+        typer.Option(
+            min=1,
+            help="Attempts per case for a malformed reply (llm judge; default 2).",
+        ),
+    ] = None,
     min_pass_rate: Annotated[
         float | None,
         typer.Option(
@@ -178,10 +192,19 @@ def run(
             "--pattern": pattern is not None,
             "--rubric": rubric is not None,
             "--model": model is not None,
+            "--max-attempts": max_attempts is not None,
         },
     )
     selected = build_judge(
-        judge, threshold, phrase or [], pattern, rubric, model, base_url, api_key_env
+        judge,
+        threshold,
+        phrase or [],
+        pattern,
+        rubric,
+        model,
+        base_url,
+        api_key_env,
+        max_attempts,
     )
     check_output_path(output)
     verdicts: list[Verdict] = []
