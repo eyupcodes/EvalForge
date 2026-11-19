@@ -61,6 +61,13 @@ class ContainsAllJudge:
     def judge(self, case: Case) -> Verdict:
         if not self.phrases:
             raise ValueError("ContainsAllJudge needs at least one phrase")
+        # Punctuation-only phrases normalize to "", which every output "contains".
+        empty = [p for p in self.phrases if not normalize(p)]
+        if empty:
+            raise ValueError(
+                "ContainsAllJudge phrases must contain text after normalization, "
+                f"got {empty!r}"
+            )
         output = normalize(case.output)
         missing = [p for p in self.phrases if normalize(p) not in output]
         score = 1 - len(missing) / len(self.phrases)
