@@ -96,6 +96,14 @@ def test_contains_all_requires_phrases() -> None:
         ContainsAllJudge(phrases=[]).judge(make_case("Paris"))
 
 
+@pytest.mark.parametrize("phrase", ["", "   ", "?!", "..."])
+def test_contains_all_rejects_phrases_without_comparable_text(phrase: str) -> None:
+    judge = ContainsAllJudge(phrases=["Paris", phrase])
+
+    with pytest.raises(ValueError, match="after normalization"):
+        judge.judge(make_case("Paris"))
+
+
 def test_regex_judge_matches_case_insensitively() -> None:
     judge = RegexJudge(pattern=r"\bparis\b")
 

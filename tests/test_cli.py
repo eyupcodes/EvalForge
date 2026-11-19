@@ -101,6 +101,7 @@ def test_run_regex_with_pattern(cases_file):
     ("args", "message"),
     [
         (["--judge", "contains_all"], "needs at least one --phrase"),
+        (["--judge", "contains_all", "--phrase", "?!"], "after normalization"),
         (["--judge", "regex"], "needs --pattern"),
         (["--judge", "regex", "--pattern", "("], "invalid --pattern"),
     ],
