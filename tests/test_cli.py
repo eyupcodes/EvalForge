@@ -97,6 +97,31 @@ def test_run_regex_with_pattern(cases_file):
     assert "1/2 passed (regex)" in result.output
 
 
+def test_run_regex_ignores_case_by_default(cases_file):
+    result = runner.invoke(
+        app, ["run", str(cases_file), "--judge", "regex", "--pattern", "^[a-z ]+$"]
+    )
+    assert result.exit_code == 0
+    assert "2/2 passed (regex)" in result.output
+
+
+def test_run_regex_case_sensitive(cases_file):
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            str(cases_file),
+            "--judge",
+            "regex",
+            "--pattern",
+            "^[a-z ]+$",
+            "--case-sensitive",
+        ],
+    )
+    assert result.exit_code == 0
+    assert "0/2 passed (regex)" in result.output
+
+
 @pytest.mark.parametrize(
     ("args", "message"),
     [
@@ -122,6 +147,8 @@ def test_run_rejects_bad_judge_options(cases_file, args, message):
         (["--judge", "token_f1", "--pattern", "^a"], "--pattern"),
         (["--judge", "token_f1", "--rubric", "r"], "--rubric"),
         (["--judge", "regex", "--pattern", "a", "--model", "m"], "--model"),
+        (["--judge", "exact_match", "--case-sensitive"], "--case-sensitive"),
+        (["--judge", "token_f1", "--case-sensitive"], "--case-sensitive"),
     ],
 )
 def test_run_rejects_options_the_judge_does_not_use(cases_file, args, message):
