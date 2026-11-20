@@ -58,6 +58,7 @@ OPTION_JUDGES = {
     "--threshold": {JudgeName.token_f1, JudgeName.contains_all, JudgeName.llm},
     "--phrase": {JudgeName.contains_all},
     "--pattern": {JudgeName.regex},
+    "--case-sensitive": {JudgeName.regex},
     "--rubric": {JudgeName.llm},
     "--model": {JudgeName.llm},
     "--max-attempts": {JudgeName.llm},
@@ -103,6 +104,7 @@ def build_judge(
     base_url: str = DEFAULT_BASE_URL,
     api_key_env: str = DEFAULT_API_KEY_ENV,
     max_attempts: int | None = None,
+    case_sensitive: bool = False,
 ) -> Judge:
     if name is JudgeName.exact_match:
         return ExactMatchJudge()
@@ -127,7 +129,7 @@ def build_judge(
     if pattern is None:
         fail("--judge regex needs --pattern")
     try:
-        return RegexJudge(pattern)
+        return RegexJudge(pattern, flags=0 if case_sensitive else re.IGNORECASE)
     except re.error as exc:
         fail(f"invalid --pattern: {exc}")
 
@@ -157,6 +159,13 @@ def run(
         list[str] | None, typer.Option(help="Required phrase (contains_all).")
     ] = None,
     pattern: Annotated[str | None, typer.Option(help="Regex (regex judge).")] = None,
+    case_sensitive: Annotated[
+        bool,
+        typer.Option(
+            "--case-sensitive",
+            help="Match case-sensitively (regex judge; default ignores case).",
+        ),
+    ] = False,
     rubric: Annotated[
         str | None, typer.Option(help="Grading rubric (llm judge).")
     ] = None,
@@ -190,6 +199,7 @@ def run(
             "--threshold": threshold is not None,
             "--phrase": phrase,
             "--pattern": pattern is not None,
+            "--case-sensitive": case_sensitive,
             "--rubric": rubric is not None,
             "--model": model is not None,
             "--max-attempts": max_attempts is not None,
@@ -205,6 +215,7 @@ def run(
         base_url,
         api_key_env,
         max_attempts,
+        case_sensitive,
     )
     check_output_path(output)
     verdicts: list[Verdict] = []
