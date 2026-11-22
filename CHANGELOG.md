@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- CI also runs on Python 3.13 (classifier added) and fails when branch coverage drops below 95% (the gate was 85%) (#62).
 - `evalforge run --judge regex --case-sensitive` matches the pattern case-sensitively instead of always ignoring case; the option is rejected for other judges (#60).
 - `ContainsAllJudge` (and `evalforge run --judge contains_all`) rejects a required phrase that is blank or punctuation-only instead of counting it as present in every output (#58).
 - `evalforge run --max-attempts N` sets the LLM judge's retry budget for malformed replies (default 2, only valid with `--judge llm`), and `LLMJudge` rejects `max_attempts < 1` instead of failing with a misleading "after 0 attempts" error (#56).

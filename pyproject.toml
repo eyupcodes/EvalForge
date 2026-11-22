@@ -17,6 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Quality Assurance",
 ]
@@ -52,7 +53,7 @@ source = ["evalforge"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 85
+fail_under = 95
 show_missing = true
 
 [tool.mypy]
