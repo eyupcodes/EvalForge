@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- The error for verdicts and human labels that cover different cases reports how many ids lack a label or a verdict and lists at most 5 of each, instead of printing every id (#64).
 - CI also runs on Python 3.13 (classifier added) and fails when branch coverage drops below 95% (the gate was 85%) (#62).
 - `evalforge run --judge regex --case-sensitive` matches the pattern case-sensitively instead of always ignoring case; the option is rejected for other judges (#60).
 - `ContainsAllJudge` (and `evalforge run --judge contains_all`) rejects a required phrase that is blank or punctuation-only instead of counting it as present in every output (#58).

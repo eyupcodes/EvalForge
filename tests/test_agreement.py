@@ -55,6 +55,31 @@ def test_mismatched_ids_raise() -> None:
         agreement([_verdict("a", True)], {"b": True})
 
 
+def test_mismatch_error_names_the_ids_when_few() -> None:
+    with pytest.raises(ValueError) as caught:
+        agreement([_verdict("a", True), _verdict("b", True)], {"b": True, "c": True})
+
+    message = str(caught.value)
+    assert "1 without a label ('a')" in message
+    assert "1 without a verdict ('c')" in message
+
+
+def test_mismatch_error_truncates_long_id_lists() -> None:
+    verdicts = [_verdict(f"v{i:03d}", True) for i in range(200)]
+    labels = {f"l{i:03d}": True for i in range(200)}
+
+    with pytest.raises(ValueError) as caught:
+        agreement(verdicts, labels)
+
+    message = str(caught.value)
+    assert "200 without a label" in message
+    assert "200 without a verdict" in message
+    assert "'v004'" in message
+    assert "'v005'" not in message
+    assert "... and 195 more" in message
+    assert len(message) < 300
+
+
 def test_duplicate_verdicts_raise() -> None:
     with pytest.raises(ValueError, match="duplicate"):
         agreement([_verdict("a", True), _verdict("a", False)], {"a": True})

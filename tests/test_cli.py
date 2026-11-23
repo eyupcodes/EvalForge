@@ -270,6 +270,22 @@ def test_agreement_reports_mismatched_ids(cases_file, tmp_path):
     assert "differ" in result.output
 
 
+def test_agreement_mismatch_error_is_bounded(tmp_path):
+    verdicts = tmp_path / "v.jsonl"
+    verdicts.write_text(
+        "".join(
+            f'{{"case_id": "v{i}", "judge": "j", "score": 1, "passed": true}}\n'
+            for i in range(100)
+        )
+    )
+    labels = write_labels(tmp_path, {f"l{i}": True for i in range(100)})
+    result = runner.invoke(app, ["agreement", str(verdicts), str(labels)])
+    assert result.exit_code == 1
+    assert "100 without a label" in result.output
+    assert "... and 95 more" in result.output
+    assert "'v99'" not in result.output
+
+
 def test_agreement_reports_missing_file(tmp_path):
     result = runner.invoke(
         app, ["agreement", str(tmp_path / "a.jsonl"), str(tmp_path / "b.jsonl")]
