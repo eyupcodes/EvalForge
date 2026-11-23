@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from evalforge.models import Verdict
 
 CI_LEVEL = 0.95
+_PREVIEW_IDS = 5
 
 
 class ConfusionMatrix(BaseModel):
@@ -55,6 +56,15 @@ class AgreementReport(BaseModel):
     ci: ConfidenceIntervals | None = None
 
 
+def _preview(ids: list[str]) -> str:
+    """List at most ``_PREVIEW_IDS`` ids so a large mismatch stays one readable line."""
+    if not ids:
+        return "none"
+    shown = ", ".join(repr(case_id) for case_id in ids[:_PREVIEW_IDS])
+    hidden = len(ids) - _PREVIEW_IDS
+    return f"{shown}, ... and {hidden} more" if hidden > 0 else shown
+
+
 def agreement(
     verdicts: Iterable[Verdict],
     human_labels: Mapping[str, bool],
@@ -95,8 +105,9 @@ def agreement(
     unused = sorted(set(human_labels) - set(by_id))
     if missing or unused:
         raise ValueError(
-            f"verdicts and human labels differ: no label for {missing}, "
-            f"no verdict for {unused}"
+            "verdicts and human labels differ: "
+            f"{len(missing)} without a label ({_preview(missing)}), "
+            f"{len(unused)} without a verdict ({_preview(unused)})"
         )
 
     pairs = [(predicted, human_labels[case_id]) for case_id, predicted in by_id.items()]
