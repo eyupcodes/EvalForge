@@ -71,13 +71,21 @@ def reject_inapplicable_options(name: JudgeName, given: dict[str, object]) -> No
             fail(f"{option} does not apply to --judge {name.value}")
 
 
-def check_output_path(path: Path | None) -> None:
+def check_output_path(path: Path | None, cases: Path | None = None) -> None:
     """Fail before any judging if ``path`` cannot be written.
 
     Nothing is created or truncated, so a failed run leaves an existing file alone.
+    ``cases`` is the input file: writing verdicts over it would destroy the dataset.
     """
     if path is None:
         return
+    if (
+        cases is not None
+        and cases.exists()
+        and path.exists()
+        and os.path.samefile(cases, path)
+    ):
+        fail(f"--output must not be the cases file: {path}")
     if path.is_dir():
         fail(f"cannot write {path}: is a directory")
     parent = path.absolute().parent
@@ -217,7 +225,7 @@ def run(
         max_attempts,
         case_sensitive,
     )
-    check_output_path(output)
+    check_output_path(output, cases)
     verdicts: list[Verdict] = []
     try:
         loaded = read_cases(cases)
