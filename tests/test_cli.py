@@ -667,3 +667,42 @@ def test_run_max_attempts_must_be_positive(cases_file):
         app, ["run", str(cases_file), "--judge", "llm", "--max-attempts", "0"]
     )
     assert result.exit_code == 2
+
+
+def test_run_refuses_to_overwrite_the_cases_file(cases_file):
+    before = cases_file.read_text(encoding="utf-8")
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "exact_match", "-o", str(cases_file)],
+    )
+    assert result.exit_code == 1
+    assert "must not be the cases file" in result.output
+    assert cases_file.read_text(encoding="utf-8") == before
+
+
+def test_run_refuses_a_respelled_path_to_the_cases_file(cases_file, tmp_path):
+    before = cases_file.read_text(encoding="utf-8")
+    respelled = tmp_path / "sub" / ".." / cases_file.name
+    (tmp_path / "sub").mkdir()
+    result = runner.invoke(
+        app,
+        ["run", str(cases_file), "--judge", "exact_match", "-o", str(respelled)],
+    )
+    assert result.exit_code == 1
+    assert "must not be the cases file" in result.output
+    assert cases_file.read_text(encoding="utf-8") == before
+
+
+def test_run_refuses_a_symlink_to_the_cases_file(cases_file, tmp_path):
+    link = tmp_path / "link.jsonl"
+    try:
+        link.symlink_to(cases_file)
+    except OSError:  # pragma: no cover - symlinks unavailable on this platform
+        pytest.skip("symlinks not supported")
+    before = cases_file.read_text(encoding="utf-8")
+    result = runner.invoke(
+        app, ["run", str(cases_file), "--judge", "exact_match", "-o", str(link)]
+    )
+    assert result.exit_code == 1
+    assert "must not be the cases file" in result.output
+    assert cases_file.read_text(encoding="utf-8") == before
