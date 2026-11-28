@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- The package ships a PEP 561 `py.typed` marker, so type checkers in downstream projects use EvalForge's annotations (#68).
 - `evalforge run` refuses an `--output` that is the cases file (also through a symlink or a differently spelled path) instead of overwriting the dataset with verdicts (#66).
 - The error for verdicts and human labels that cover different cases reports how many ids lack a label or a verdict and lists at most 5 of each, instead of printing every id (#64).
 - CI also runs on Python 3.13 (classifier added) and fails when branch coverage drops below 95% (the gate was 85%) (#62).
